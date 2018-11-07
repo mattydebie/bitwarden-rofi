@@ -47,7 +47,7 @@ open_menu() {
     pass=`bw get password $getPass`
 
     notify-send $getPass $pass
-    echo $pass | xclip -selection clipboard
+    printf "%s" $pass | xclip -selection clipboard
 
   elif [ $exit -eq 1 ]; then
     exit 1;

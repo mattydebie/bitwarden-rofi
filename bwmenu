@@ -3,6 +3,8 @@
 
 BW_HASH_FILE=~/.bwhash
 
+JQ_URLS=".[]|.login.uris|.[].uri"
+JQ_NAMES=".[].name"
 
 check_files() {
   if ! [ -f $BW_HASH_FILE ]; then touch $BW_HASH_FILE; fi
@@ -22,16 +24,38 @@ check_unlocked() {
   source $BW_HASH_FILE
 }
 
+show_rofi() {
+  rofi -dmenu -p 'Password' -no-custom -i -mesg " <b>Alt+u</b>: Urls | <b>Alt+n</b>: Names " -kb-custom-1 Alt-u -kb-custom-2 Alt-n
+}
+
 open_menu() {
+  # decide what to search on
+    case $1 in
+      10) jq="$JQ_URLS";;
+      11|*) jq="$JQ_NAMES";;
+    esac;
+
+
   # show the rofi menu
-  getPass=`bw list items | jq -r ".[].name" | rofi -dmenu -p Password -no-custom -i`
+  getPass=`bw list items | jq -r "$jq" | show_rofi`
+  exit=$?
+  
+  if [ $exit -eq 0 ]; then
 
-  if [ -z "$getPass" ]; then exit 0; fi
+    if [ -z "$getPass" ]; then exit 0; fi
 
-  pass=`bw get password $getPass`
+    pass=`bw get password $getPass`
 
-  notify-send $getPass $pass
-  echo $pass | xclip -selection clipboard
+    notify-send $getPass $pass
+    echo $pass | xclip -selection clipboard
+
+  elif [ $exit -eq 1 ]; then
+    exit 1;
+
+  else
+    open_menu $exit;
+  fi;
+       
 }
 
 # check if files are present

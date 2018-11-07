@@ -1,0 +1,42 @@
+#!/bin/bash
+# Rofi extension for BitWarden-cli
+
+BW_HASH_FILE=~/.bwhash
+
+
+check_files() {
+  if ! [ -f $BW_HASH_FILE ]; then touch $BW_HASH_FILE; fi
+}
+
+check_unlocked() {
+  source $BW_HASH_FILE
+
+  bw list items &> /dev/null
+  if [ $? -ne 0 ]; then 
+    mpw=`rofi -dmenu -p 'Master Password' -password` || exit $?;
+
+    if [ -z "$mpw" ]; then exit 1; fi
+    bw unlock $mpw | grep -e 'export.*=="' -o > $BW_HASH_FILE || exit $?;
+  fi;
+
+  source $BW_HASH_FILE
+}
+
+open_menu() {
+  # show the rofi menu
+  getPass=`bw list items | jq -r ".[].name" | rofi -dmenu -p Password -no-custom -i`
+
+  if [ -z "$getPass" ]; then exit 0; fi
+
+  pass=`bw get password $getPass`
+
+  notify-send $getPass $pass
+  echo $pass | xclip -selection clipboard
+}
+
+# check if files are present
+check_files
+
+# make sure BitWarden is unlocked
+check_unlocked
+open_menu

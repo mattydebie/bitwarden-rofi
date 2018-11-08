@@ -3,23 +3,20 @@
 
 BW_HASH_FILE=~/.bwhash
 
-JQ_URLS=".[]|.login.uris|.[].uri"
+JQ_URLS=".[] | select(has(\"login\")) | .login.uris[0].uri" # until [#37](https://github.com/bitwarden/cli/issues/37) is resolved
+#JQ_URLS=".[] | select(has(\"login\")) | .login.uris | .[].uri" 
 JQ_NAMES=".[].name"
 
 check_files() {
   if ! [ -f $BW_HASH_FILE ]; then touch $BW_HASH_FILE; fi
 }
 
-check_unlocked() {
-  source $BW_HASH_FILE
+unlock_bw() {
 
-  bw list items &> /dev/null
-  if [ $? -ne 0 ]; then 
-    mpw=`rofi -dmenu -p 'Master Password' -password` || exit $?;
+  mpw=`rofi -dmenu -p 'Master Password' -password` || exit $?;
 
-    if [ -z "$mpw" ]; then exit 1; fi
-    bw unlock $mpw | grep -e 'export.*=="' -o > $BW_HASH_FILE || exit $?;
-  fi;
+  if [ -z "$mpw" ]; then exit 1; fi
+  bw unlock $mpw | grep -e 'export.*=="' -o > $BW_HASH_FILE || exit $?;
 
   source $BW_HASH_FILE
 }
@@ -37,16 +34,25 @@ open_menu() {
 
 
   # show the rofi menu
-  getPass=`bw list items | jq -r "$jq" | show_rofi`
+  items=`bw list items`
+  if [ $? -gt 0 ]; then
+    unlock_bw
+    open_menu $1
+    return;
+  fi;
+
+  getPass=`echo $items | jq -r "$jq" | show_rofi`
   exit=$?
-  
+
   if [ $exit -eq 0 ]; then
 
     if [ -z "$getPass" ]; then exit 0; fi
 
-    pass=`bw get password $getPass`
+    # retrieve the id for single response matching
+    id=`bw list items --search "$getPass" | jq -r '.[0].id'`
+    pass=`bw get password $id`
 
-    notify-send $getPass $pass
+    notify-send "$getPass" "${pass:0:4}***"
     printf "%s" $pass | xclip -selection clipboard
 
   elif [ $exit -eq 1 ]; then
@@ -60,7 +66,5 @@ open_menu() {
 
 # check if files are present
 check_files
-
-# make sure BitWarden is unlocked
-check_unlocked
+source $BW_HASH_FILE
 open_menu

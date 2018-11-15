@@ -16,7 +16,7 @@ unlock_bw() {
   mpw=`rofi -dmenu -p 'Master Password' -password` || exit $?;
 
   if [ -z "$mpw" ]; then exit 1; fi
-  bw unlock $mpw | grep -e 'export.*=="' -o > $BW_HASH_FILE || exit $?;
+  bw unlock "$mpw" | grep -e 'export.*=="' -o > $BW_HASH_FILE || exit $?;
 
   source $BW_HASH_FILE
 }

@@ -89,7 +89,7 @@ on_rofi_exit() {
     10) sync_bitwarden;;
     11) show_items;;
     12) show_urls;;
-    *) echo 'some error'; exit $1;;
+    *) exit $1;;
   esac
 }
 

@@ -1,70 +1,118 @@
 #!/bin/bash
 # Rofi extension for BitWarden-cli
 
+# File to store the BitWarden session in
 BW_HASH_FILE=~/.bwhash
 
-JQ_URLS=".[] | select(has(\"login\")) | .login.uris[0].uri" # until [#37](https://github.com/bitwarden/cli/issues/37) is resolved
-#JQ_URLS=".[] | select(has(\"login\")) | .login.uris | .[].uri" 
-JQ_NAMES=".[].name"
+# Holds the available items in memory
+ITEMS=
 
-check_files() {
-  if ! [ -f $BW_HASH_FILE ]; then touch $BW_HASH_FILE; fi
-}
-
-unlock_bw() {
-
-  mpw=`rofi -dmenu -p 'Master Password' -password` || exit $?;
-
-  if [ -z "$mpw" ]; then exit 1; fi
-  bw unlock "$mpw" | grep -e 'export.*=="' -o > $BW_HASH_FILE || exit $?;
-
+# source the hash file to gain access to the BitWarden CLI
+# Pre fetch all the items
+load_items() {
   source $BW_HASH_FILE
+  ITEMS=`bw list items 2>/dev/null`
+
+  if [ $? -ne 0 ]; then
+    mpw=`rofi -dmenu -p "Master Password" -password` || exit $?;
+    bw unlock "$mpw" | grep -e 'export.*=="' -o > $BW_HASH_FILE || { 
+      rofi -e "Failed to unlock BitWarden.
+Please try again."; 
+      exit 1; 
+    }
+    load_items;
+  fi
 }
 
-show_rofi() {
-  rofi -dmenu -p 'Password' -no-custom -i -mesg " <b>Alt+u</b>: Urls | <b>Alt+n</b>: Names " -kb-custom-1 Alt-u -kb-custom-2 Alt-n
+# Show the Rofi menu with options
+# Reads items from stdin
+rofi_menu() {
+  rofi -dmenu -p 'Name' \
+    -i -no-custom \
+    -mesg ' <b>Alt+r</b>: sync | <b>Alt+u</b>: urls | <b>Alt+n</b>: names' \
+    -kb-custom-1 alt+r \
+    -kb-custom-2 alt+n \
+    -kb-custom-3 alt+u 
 }
 
-open_menu() {
-  # decide what to search on
-    case $1 in
-      10) jq="$JQ_URLS";;
-      11|*) jq="$JQ_NAMES";;
-    esac;
+# Show items in a rofi menu by name of the item
+show_items() {
+  item=`echo $ITEMS \
+    | jq -r ".[] | select( has( \"login\" ) ) | .name" \
+    | rofi_menu`
 
-
-  # show the rofi menu
-  items=`bw list items`
-  if [ $? -gt 0 ]; then
-    unlock_bw
-    open_menu $1
-    return;
-  fi;
-
-  getPass=`echo $items | jq -r "$jq" | show_rofi`
   exit=$?
 
   if [ $exit -eq 0 ]; then
-
-    if [ -z "$getPass" ]; then exit 0; fi
-
-    # retrieve the id for single response matching
-    id=`bw list items --search "$getPass" | jq -r '.[0].id'`
-    pass=`bw get password $id`
-
-    notify-send "$getPass" "${pass:0:4}***"
-    printf "%s" $pass | xclip -selection clipboard
-
-  elif [ $exit -eq 1 ]; then
-    exit 1;
-
+    item=`echo $ITEMS | jq -r ".[] | select(.name == \"$item\")"`
+    show_password "$item"
   else
-    open_menu $exit;
-  fi;
-       
+    on_rofi_exit $exit;
+  fi
 }
 
-# check if files are present
-check_files
-source $BW_HASH_FILE
-open_menu
+# Show items in a rofi menu by url of the item
+# if url occurs in multiple items, show the menu again with those items only
+show_urls() {
+  url=`echo $ITEMS \
+    | jq -r '.[] | select(has("login")) | .login | select(has("uris")).uris | .[].uri' \
+    | rofi_menu`
+
+  exit=$?
+
+  if [ $exit -eq 0 ]; then
+    ITEMS=`bw list items --url "$url"`
+    if [ `echo $ITEMS | jq -r 'length'` -gt 1 ]; then
+      show_items;
+    else
+      item=`echo $ITEMS | jq -r '.[0]'`;
+      show_password "$item";
+    fi
+  else
+    on_rofi_exit $exit;
+  fi
+}
+
+# re-sync the BitWarden items with the server
+sync_bitwarden() {
+  bw sync &>/dev/null || {
+    rofi -e "Failed to sync bitwarden"
+    exit 1;
+  }
+
+  show_items
+}
+
+# Evaluate the rofi exit codes
+on_rofi_exit() {
+  case "$1" in 
+    10) sync_bitwarden;;
+    11) show_items;;
+    12) show_urls;;
+    *) echo 'some error'; exit $1;;
+  esac
+}
+
+# Output the password
+# copy to clipboard and give the user feedback that the password is copied
+# $1: json item
+show_password() {
+  pass=`echo $1 | jq -r '.login.password'`;
+
+  # send a notification for 5 seconds (-t 5000)
+  # not sure if icon will be present everywhere, /usr/share/icons is default icon location
+  notify-send "<b>`echo $1 | jq -r '.name'`</b> copied" "${pass:0:4}****" -t 5000  -i /usr/share/icons/hicolor/64x64/apps/bitwarden.png 
+  echo $pass | xclip -selection clipboard -r
+
+  sleep 5;
+  if [ "`xclip -selection clipboard -o`" = "$pass" ]; then
+    echo '' | xclip -selection clipboard -r
+  fi
+}
+
+if ! [ -f $BW_HASH_FILE ]; then
+  touch $BW_HASH_FILE;
+fi
+
+load_items;
+show_items;

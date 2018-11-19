@@ -80,6 +80,7 @@ sync_bitwarden() {
     exit 1;
   }
 
+  load_items
   show_items
 }
 

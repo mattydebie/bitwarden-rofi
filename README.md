@@ -6,7 +6,7 @@ On selecting an entry, the password is copied to your clipboard for 5 seconds. D
 ![bitwarden-rofi](img/screenshot1.png)
 
 ## Install
-To install this script, simply but the `bwmenu` in your `bin` folder (/home/{user}/bin) and grant it the +x permission
+To install this script, simply put the `bwmenu` in your `bin` folder (/home/{user}/bin) and grant it the +x permission
 ```bash
 chmod +x bwmenu
 ```

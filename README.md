@@ -5,11 +5,20 @@ On selecting an entry, the password is copied to your clipboard for 5 seconds. D
 
 ![bitwarden-rofi](img/screenshot1.png)
 
+## Install
+To install this script, simply but the `bwmenu` in your `bin` folder (/home/{user}/bin) and grant it the +x permission
+```bash
+chmod +x bwmenu
+```
+
+You can either execute the script from a terminal or by binding it to a key combination in your window manager.
+
 ## Functions
 
   - *Alt+r*: sync bitwarden
   - *Alt+u*: search on url
   - *Alt+n*: search on names
+  - *Alt+f*: show folders
 
 ## Dependencies
 

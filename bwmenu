@@ -129,6 +129,7 @@ show_password() {
 
 if ! [ -f $BW_HASH_FILE ]; then
   touch $BW_HASH_FILE;
+  chmod 600 $BW_HASH_FILE;
 fi
 
 load_items;

@@ -29,10 +29,12 @@ Please try again.";
 rofi_menu() {
   rofi -dmenu -p 'Name' \
     -i -no-custom \
-    -mesg ' <b>Alt+r</b>: sync | <b>Alt+u</b>: urls | <b>Alt+n</b>: names' \
+    -mesg ' <b>Alt+r</b>: sync | <b>Alt+u</b>: urls | <b>Alt+n</b>: names | <b>Alt+c</b>: folders' \
     -kb-custom-1 alt+r \
     -kb-custom-2 alt+n \
-    -kb-custom-3 alt+u 
+    -kb-custom-3 alt+u \
+    -kb-custom-4 alt+c 
+
 }
 
 # Show items in a rofi menu by name of the item
@@ -73,6 +75,19 @@ show_urls() {
   fi
 }
 
+show_folders() {
+  folders=`bw list folders`
+  folder=`echo $folders | jq -r '.[] | .name' | rofi_menu`
+
+  exit=$?
+  if [ $exit -ne 0 ]; then on_rofi_exit $exit; fi
+
+  folder_id=`echo $folders | jq -r ".[] | select(.name == \"$folder\").id"`
+
+  ITEMS=`bw list items --folderid $folder_id`
+  show_items
+}
+
 # re-sync the BitWarden items with the server
 sync_bitwarden() {
   bw sync &>/dev/null || {
@@ -88,8 +103,9 @@ sync_bitwarden() {
 on_rofi_exit() {
   case "$1" in 
     10) sync_bitwarden;;
-    11) show_items;;
+    11) load_items; show_items;;
     12) show_urls;;
+    13) show_folders;;
     *) exit $1;;
   esac
 }

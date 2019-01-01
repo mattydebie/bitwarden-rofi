@@ -121,8 +121,10 @@ on_rofi_exit() {
 select_copy_command() {
   if hash xclip 2>/dev/null; then
     CLIPBOARD_MODE=xclip
+  elif hash xsel 2>/dev/null; then
+    CLIPBOARD_MODE=xsel
   else
-    exit_error 1 "No clipboard command found. Please install xclip."
+    exit_error 1 "No clipboard command found. Please install either xclip or xsel."
   fi
 }
 
@@ -148,6 +150,18 @@ clipboard-xclip-get() {
 
 clipboard-xclip-clear() {
     echo "" | xclip -selection clipboard -r
+}
+
+clipboard-xsel-set() {
+  xsel --clipboard --input
+}
+
+clipboard-xsel-get() {
+  xsel --clipboard
+}
+
+clipboard-xsel-clear() {
+  xsel --clipboard --delete
 }
 
 # Output the password

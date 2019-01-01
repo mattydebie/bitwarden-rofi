@@ -7,6 +7,9 @@ BW_HASH_FILE=~/.bwhash
 # Holds the available items in memory
 ITEMS=
 
+# Stores which command will be used to deal with clipboards
+CLIPBOARD_MODE=
+
 # source the hash file to gain access to the BitWarden CLI
 # Pre fetch all the items
 load_items() {
@@ -114,6 +117,39 @@ on_rofi_exit() {
   esac
 }
 
+# Set $CLIPBOARD_MODE to a command that will put stdin into the clipboard.
+select_copy_command() {
+  if hash xclip 2>/dev/null; then
+    CLIPBOARD_MODE=xclip
+  else
+    exit_error 1 "No clipboard command found. Please install xclip."
+  fi
+}
+
+clipboard-set() {
+  clipboard-${CLIPBOARD_MODE}-set
+}
+
+clipboard-get() {
+  clipboard-${CLIPBOARD_MODE}-get
+}
+
+clipboard-clear() {
+  clipboard-${CLIPBOARD_MODE}-clear
+}
+
+clipboard-xclip-set() {
+    xclip -selection clipboard -r
+}
+
+clipboard-xclip-get() {
+    xclip -selection clipboard -o
+}
+
+clipboard-xclip-clear() {
+    echo "" | xclip -selection clipboard -r
+}
+
 # Output the password
 # copy to clipboard and give the user feedback that the password is copied
 # $1: json item
@@ -122,12 +158,12 @@ show_password() {
 
   # send a notification for 5 seconds (-t 5000)
   # not sure if icon will be present everywhere, /usr/share/icons is default icon location
-  notify-send "<b>`echo $1 | jq -r '.name'`</b> copied" "${pass:0:4}****" -t 5000  -i /usr/share/icons/hicolor/64x64/apps/bitwarden.png
-  echo $pass | xclip -selection clipboard -r
+  notify-send "<b>$(echo "$1" | jq -r '.name')</b> copied" "${pass:0:4}****" -t 5000  -i /usr/share/icons/hicolor/64x64/apps/bitwarden.png
+  echo "$pass" | clipboard-set
 
-  sleep 5;
-  if [ "`xclip -selection clipboard -o`" = "$pass" ]; then
-    echo '' | xclip -selection clipboard -r
+  sleep 5
+  if [[ "$(clipboard-get)" == "$pass" ]]; then
+    clipboard-clear
   fi
 }
 
@@ -136,5 +172,6 @@ if ! [ -f $BW_HASH_FILE ]; then
   chmod 600 $BW_HASH_FILE;
 fi
 
-load_items;
-show_items;
+select_copy_command
+load_items
+show_items

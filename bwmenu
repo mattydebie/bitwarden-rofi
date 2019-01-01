@@ -15,13 +15,20 @@ load_items() {
 
   if [ $? -ne 0 ]; then
     mpw=`rofi -dmenu -p "Master Password" -password` || exit $?;
-    bw unlock "$mpw" | grep -e 'export.*=="' -o > $BW_HASH_FILE || { 
-      rofi -e "Failed to unlock BitWarden.
-Please try again."; 
-      exit 1; 
+    bw unlock "$mpw" | grep -e 'export.*=="' -o > $BW_HASH_FILE || {
+      exit_error 1 "Failed to unlock BitWarden.
+Please try again."
     }
     load_items;
   fi
+}
+
+exit_error() {
+  local code="$1"
+  local message="$2"
+
+  rofi -e "$message"
+  exit "$code"
 }
 
 # Show the Rofi menu with options
@@ -33,7 +40,7 @@ rofi_menu() {
     -kb-custom-1 alt+r \
     -kb-custom-2 alt+n \
     -kb-custom-3 alt+u \
-    -kb-custom-4 alt+c 
+    -kb-custom-4 alt+c
 
 }
 
@@ -90,10 +97,7 @@ show_folders() {
 
 # re-sync the BitWarden items with the server
 sync_bitwarden() {
-  bw sync &>/dev/null || {
-    rofi -e "Failed to sync bitwarden"
-    exit 1;
-  }
+  bw sync &>/dev/null || exit_error 1 "Failed to sync bitwarden"
 
   load_items
   show_items
@@ -101,7 +105,7 @@ sync_bitwarden() {
 
 # Evaluate the rofi exit codes
 on_rofi_exit() {
-  case "$1" in 
+  case "$1" in
     10) sync_bitwarden;;
     11) load_items; show_items;;
     12) show_urls;;
@@ -118,7 +122,7 @@ show_password() {
 
   # send a notification for 5 seconds (-t 5000)
   # not sure if icon will be present everywhere, /usr/share/icons is default icon location
-  notify-send "<b>`echo $1 | jq -r '.name'`</b> copied" "${pass:0:4}****" -t 5000  -i /usr/share/icons/hicolor/64x64/apps/bitwarden.png 
+  notify-send "<b>`echo $1 | jq -r '.name'`</b> copied" "${pass:0:4}****" -t 5000  -i /usr/share/icons/hicolor/64x64/apps/bitwarden.png
   echo $pass | xclip -selection clipboard -r
 
   sleep 5;

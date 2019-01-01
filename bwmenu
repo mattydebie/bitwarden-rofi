@@ -149,7 +149,7 @@ clipboard-xclip-get() {
 }
 
 clipboard-xclip-clear() {
-    echo "" | xclip -selection clipboard -r
+    echo -n "" | xclip -selection clipboard -r
 }
 
 clipboard-xsel-set() {
@@ -173,7 +173,7 @@ show_password() {
   # send a notification for 5 seconds (-t 5000)
   # not sure if icon will be present everywhere, /usr/share/icons is default icon location
   notify-send "<b>$(echo "$1" | jq -r '.name')</b> copied" "${pass:0:4}****" -t 5000  -i /usr/share/icons/hicolor/64x64/apps/bitwarden.png
-  echo "$pass" | clipboard-set
+  echo -n "$pass" | clipboard-set
 
   sleep 5
   if [[ "$(clipboard-get)" == "$pass" ]]; then

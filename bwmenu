@@ -1,8 +1,13 @@
 #!/bin/bash
 # Rofi extension for BitWarden-cli
+NAME="$(basename "$0")"
+VERSION="0.1"
+DEFAULT_CLEAR=5
 
-# File to store the BitWarden session in
-BW_HASH_FILE=~/.bwhash
+# Options
+CLEAR=$DEFAULT_CLEAR # Clear password after N seconds (0 to disable)
+SHOW_PASSWORD=no # Show part of the password in the notification
+BW_HASH_FILE=~/.bwhash # File to store the BitWarden session in
 
 # Holds the available items in memory
 ITEMS=
@@ -54,7 +59,7 @@ show_items() {
     | rofi_menu
   ); then
     item=$(echo "$ITEMS" | jq -r ".[] | select(.name == \"$item\")")
-    show_password "$item"
+    copy_password "$item"
   else
     on_rofi_exit $?
   fi
@@ -73,7 +78,7 @@ show_urls() {
       show_items
     else
       item=$(echo "$ITEMS" | jq -r '.[0]')
-      show_password "$item"
+      copy_password "$item"
     fi
   else
     on_rofi_exit $?
@@ -158,28 +163,142 @@ clipboard-xsel-clear() {
   xsel --clipboard --delete
 }
 
-# Output the password
+# Copy the password
 # copy to clipboard and give the user feedback that the password is copied
 # $1: json item
-show_password() {
+copy_password() {
   pass=$(echo "$1" | jq -r '.login.password')
 
-  # send a notification for 5 seconds (-t 5000)
-  # not sure if icon will be present everywhere, /usr/share/icons is default icon location
-  notify-send "<b>$(echo "$1" | jq -r '.name')</b> copied" "${pass:0:4}****" -t 5000  -i /usr/share/icons/hicolor/64x64/apps/bitwarden.png
+  show_copy_notification "$1"
   echo -n "$pass" | clipboard-set
 
-  sleep 5
-  if [[ "$(clipboard-get)" == "$pass" ]]; then
-    clipboard-clear
+  if [[ $CLEAR -gt 0 ]]; then
+    sleep "$CLEAR"
+    if [[ "$(clipboard-get)" == "$pass" ]]; then
+      clipboard-clear
+    fi
   fi
 }
 
-if ! [ -f $BW_HASH_FILE ]; then
-  touch $BW_HASH_FILE
-  chmod 600 $BW_HASH_FILE
-fi
+# Show notification about the password being copied.
+# $1: json item
+show_copy_notification() {
+  local title
+  local body=""
+  local extra_options=()
 
+  title="<b>$(echo "$1" | jq -r '.name')</b> copied"
+
+  if [[ $SHOW_PASSWORD == "yes" ]]; then
+    pass=$(echo "$1" | jq -r '.login.password')
+    body="${pass:0:4}****"
+  fi
+
+  if [[ $CLEAR -gt 0 ]]; then
+    body="$body<br>Will be cleared in ${CLEAR} seconds."
+    # Keep notification visible while the clipboard contents are active.
+    extra_options+=("-t" "$((CLEAR * 1000))")
+  fi
+  # not sure if icon will be present everywhere, /usr/share/icons is default icon location
+  notify-send "$title" "$body" "${extra_options[@]}" -i /usr/share/icons/hicolor/64x64/apps/bitwarden.png
+}
+
+parse_cli_arguments() {
+  # Use GNU getopt to parse command line arguments
+  if ! ARGUMENTS=$(getopt -o c:C --long clear:,no-clear,show-password,state-path:,help,version -- "$@"); then
+    exit_error 1 "Failed to parse command-line arguments"
+  fi
+  eval set -- "$ARGUMENTS"
+
+  while true; do
+    case "$1" in
+      --help )
+        cat <<-USAGE
+$NAME $VERSION
+
+Usage:
+  $NAME [options]
+
+Options:
+  --help
+      Show this help text and exit.
+
+  --version
+      Show version information and exit.
+
+  -c <SECONDS>, --clear <SECONDS>, --clear=<SECONDS>
+      Clear password from clipboard after this many seconds.
+      Defaults: ${DEFAULT_CLEAR} seconds.
+
+  -C, --no-clear
+      Don't automatically clear the password from the clipboard. This disables
+      the default --clear option.
+
+  --show-password
+      Show the first 4 characters of the copied password in the notification.
+
+  --state-path <PATH>, --state-path=<PATH>
+      Store the Bitwarden session information in this file. This file makes it
+      possible to reuse your session multiple times and keep you from having to
+      enter your master password over and over again.
+      Default: "${BW_HASH_FILE}".
+
+      NOTE: The "~" character will not be expanded properly unless you put a
+      space between the argument and the value.
+
+Examples:
+  # Default options work well
+  $NAME
+
+  # Tilde can be used when you put space in arguments.
+  $NAME -c 10 --state-path ~/.cache/bwmenu
+  $NAME -c 10 --state-path=$HOME/.cache/bwmenu
+
+  # XDG-compatible state location
+  $NAME --state-path=\${XDG_RUNTIME_DIR}/bwmenu-state
+USAGE
+        shift
+        exit 0
+        ;;
+      --version )
+        echo "$NAME $VERSION"
+        shift
+        exit 0
+        ;;
+      -c | --clear )
+        CLEAR="$2"
+        shift 2
+        ;;
+      -C | --no-clear )
+        CLEAR=0
+        shift
+        ;;
+      --show-password )
+        SHOW_PASSWORD=yes
+        shift
+        ;;
+      --state-path )
+        BW_HASH_FILE="$2"
+        shift 2
+        ;;
+      -- )
+        break
+        ;;
+      * )
+        exit_error 1 "Unknown option $1"
+    esac
+  done
+}
+
+init_state() {
+  if ! [[ -f "$BW_HASH_FILE" ]]; then
+    touch "$BW_HASH_FILE"
+    chmod 600 "$BW_HASH_FILE"
+  fi
+}
+
+parse_cli_arguments "$@"
+init_state
 select_copy_command
 load_items
 show_items

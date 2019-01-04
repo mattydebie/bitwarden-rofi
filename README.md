@@ -98,3 +98,12 @@ mkdir -p ~/.local/bin && \
   cp bwmenu ~/.local/bin/bwmenu && \
   chmod +x ~/.local/bin/bwmenu
 ```
+
+## License
+
+Released under the GNU General Public License, version 3. See `LICENSE` file.
+
+Copyright © 2018-2019
+  * Matthias De Bie
+  * Magnus Bergmark
+  * Jonathan Raphaelson.

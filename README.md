@@ -1,21 +1,16 @@
 # BitWarden Rofi Menu
 
 This is a work in progress to get the BitWarden cli functionality in an easy Rofi menu.
-On selecting an entry, the password is copied to your clipboard for 5 seconds. During those 5 seconds, a notification is shown indicating which password you are copying at that time.
+On selecting an entry, the password is copied to your clipboard for 5 seconds.
+During those 5 seconds, a notification is shown indicating which password you
+are copying at that time.
 
 ![bitwarden-rofi](img/screenshot1.png)
 
-## Install
-To install this script, put the `bwmenu` in your `bin` folder and grant it the `+x` permission
-
-```bash
-cp bwmenu "$HOME/bin/bwmenu"
-chmod +x "$HOME/bin/bwmenu"
-```
-
-You can either execute the script from a terminal or by binding it to a key combination in your window manager.
-
 ## Usage
+
+You can either execute the script from a terminal or by binding it to a key
+combination in your window manager.
 
 ```
 bwmenu 0.1
@@ -45,7 +40,7 @@ Options:
       Store the Bitwarden session information in this file. This file makes it
       possible to reuse your session multiple times and keep you from having to
       enter your master password over and over again.
-      Default: "/home/mange/.bwhash".
+      Default: "~/.bwhash".
 
       NOTE: The "~" character will not be expanded properly unless you put a
       space between the argument and the value.
@@ -56,21 +51,50 @@ Examples:
 
   # Tilde can be used when you put space in arguments.
   bwmenu -c 10 --state-path ~/.cache/bwmenu
-  bwmenu -c 10 --state-path=/home/mange/.cache/bwmenu
+  bwmenu -c 10 --state-path=$HOME/.cache/bwmenu
 
   # XDG-compatible state location
   bwmenu --state-path=${XDG_RUNTIME_DIR}/bwmenu-state
 ```
 
-## Functions
 
-  - *Alt+r*: sync bitwarden
-  - *Alt+u*: search on url
-  - *Alt+n*: search on names
-  - *Alt+f*: show folders
+### Functions
 
-## Dependencies
+  - <kbd>Alt</kbd>+<kbd>r</kbd>: Resync Bitwarden
+  - <kbd>Alt</kbd>+<kbd>u</kbd>: Search on url
+  - <kbd>Alt</kbd>+<kbd>n</kbd>: Search on names
+  - <kbd>Alt</kbd>+<kbd>f</kbd>: Select folder to search in
+
+## Install
+
+### Via package managers
+
+<a href="https://repology.org/metapackage/bitwarden-rofi/versions">
+  <img src="https://repology.org/badge/vertical-allrepos/bitwarden-rofi.svg" alt="Packaging status" align="right">
+</a>
+
+#### Arch Linux (AUR)
+
+Install the `bitwarden-rofi` AUR package along with either `xclip` or `xsel`
+(not installed automatically).
+
+### Via source
+
+Install these dependencies:
 
 - bitwarden-cli
 - jq
 - xclip or xsel
+
+Then download the script file and place it somewhere on your `$PATH` and grant it
+the `+x` permission.
+
+```bash
+# Install for all users
+sudo install -D --mode=755 --group=root --owner=root bwmenu /usr/local/bin/bwmenu
+
+# Install for yourself
+mkdir -p ~/.local/bin && \
+  cp bwmenu ~/.local/bin/bwmenu && \
+  chmod +x ~/.local/bin/bwmenu
+```

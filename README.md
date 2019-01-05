@@ -63,7 +63,7 @@ Examples:
   - <kbd>Alt</kbd>+<kbd>r</kbd>: Resync Bitwarden
   - <kbd>Alt</kbd>+<kbd>u</kbd>: Search on url
   - <kbd>Alt</kbd>+<kbd>n</kbd>: Search on names
-  - <kbd>Alt</kbd>+<kbd>f</kbd>: Select folder to search in
+  - <kbd>Alt</kbd>+<kbd>c</kbd>: Select folder to search in
 
 ## Install
 

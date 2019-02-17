@@ -13,10 +13,10 @@ You can either execute the script from a terminal or by binding it to a key
 combination in your window manager.
 
 ```
-bwmenu 0.1
+bwmenu 0.2
 
 Usage:
-  bwmenu [options]
+  bwmenu [options] -- [rofi options]
 
 Options:
   --help
@@ -55,6 +55,9 @@ Examples:
 
   # XDG-compatible state location
   bwmenu --state-path=${XDG_RUNTIME_DIR}/bwmenu-state
+
+  # Place rofi on top of screen, like a Quake console
+  bwmenu -- -location 2
 ```
 
 

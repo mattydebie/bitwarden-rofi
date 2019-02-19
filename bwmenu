@@ -1,7 +1,7 @@
 #!/bin/bash
 # Rofi extension for BitWarden-cli
 NAME="$(basename "$0")"
-VERSION="0.1"
+VERSION="0.2"
 DEFAULT_CLEAR=5
 
 # Options
@@ -14,6 +14,9 @@ ITEMS=
 
 # Stores which command will be used to deal with clipboards
 CLIPBOARD_MODE=
+
+# Populated in parse_cli_arguments
+ROFI_OPTIONS=()
 
 # source the hash file to gain access to the BitWarden CLI
 # Pre fetch all the items
@@ -47,8 +50,8 @@ rofi_menu() {
     -kb-custom-1 alt+r \
     -kb-custom-2 alt+n \
     -kb-custom-3 alt+u \
-    -kb-custom-4 alt+c
-
+    -kb-custom-4 alt+c \
+    "${ROFI_OPTIONS[@]}"
 }
 
 # Show items in a rofi menu by name of the item
@@ -217,7 +220,7 @@ parse_cli_arguments() {
 $NAME $VERSION
 
 Usage:
-  $NAME [options]
+  $NAME [options] -- [rofi options]
 
 Options:
   --help
@@ -256,6 +259,9 @@ Examples:
 
   # XDG-compatible state location
   $NAME --state-path=\${XDG_RUNTIME_DIR}/bwmenu-state
+
+  # Place rofi on top of screen, like a Quake console
+  $NAME -- -location 2
 USAGE
         shift
         exit 0
@@ -282,6 +288,8 @@ USAGE
         shift 2
         ;;
       -- )
+        shift
+        ROFI_OPTIONS=("$@")
         break
         ;;
       * )

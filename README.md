@@ -13,7 +13,7 @@ You can either execute the script from a terminal or by binding it to a key
 combination in your window manager.
 
 ```
-bwmenu 0.2
+bwmenu 0.3
 
 Usage:
   bwmenu [options] -- [rofi options]

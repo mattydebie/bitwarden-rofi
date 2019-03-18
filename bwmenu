@@ -1,7 +1,7 @@
 #!/bin/bash
 # Rofi extension for BitWarden-cli
 NAME="$(basename "$0")"
-VERSION="0.2"
+VERSION="0.3"
 DEFAULT_CLEAR=5
 
 # Options

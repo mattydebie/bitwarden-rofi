@@ -25,7 +25,7 @@ load_items() {
   source "$BW_HASH_FILE"
   if ! ITEMS=$(bw list items 2>/dev/null); then
     mpw=$(rofi -dmenu -p "Master Password" -password) || exit $?
-    bw unlock "$mpw" | grep -e 'export.*=="' -o > $BW_HASH_FILE || {
+    echo "$mpw" | bw unlock | grep -e 'export.*=="' -o > $BW_HASH_FILE || {
       exit_error 1 "Failed to unlock BitWarden.
 Please try again."
     }

@@ -46,11 +46,15 @@ exit_error() {
 rofi_menu() {
   rofi -dmenu -p 'Name' \
     -i -no-custom \
-    -mesg ' <b>Alt+r</b>: sync | <b>Alt+u</b>: urls | <b>Alt+n</b>: names | <b>Alt+c</b>: folders' \
+    -mesg ' <b>Alt+r</b>: sync      | <b>Alt+u</b>: urls      | <b>Alt+n</b>: names     | <b>Alt+c</b>: folders
+ <b>Alt+1</b>: Type all  | <b>Alt+2</b>: Type user | <b>Alt+3</b>: Type pass' \
     -kb-custom-1 alt+r \
     -kb-custom-2 alt+n \
     -kb-custom-3 alt+u \
     -kb-custom-4 alt+c \
+    -kb-custom-5 "Alt+1" \
+    -kb-custom-6 "Alt+2" \
+    -kb-custom-7 "Alt+3" \
     "${ROFI_OPTIONS[@]}"
 }
 
@@ -64,7 +68,7 @@ show_items() {
     item=$(echo "$ITEMS" | jq -r ".[] | select(.name == \"$item\")")
     copy_password "$item"
   else
-    on_rofi_exit $?
+    on_rofi_exit $? "$item"
   fi
 }
 
@@ -84,14 +88,14 @@ show_urls() {
       copy_password "$item"
     fi
   else
-    on_rofi_exit $?
+    on_rofi_exit $? "$item"
   fi
 }
 
 show_folders() {
   folders=$(bw list folders)
   if ! folder=$(echo "$folders" | jq -r '.[] | .name' | rofi_menu); then
-    on_rofi_exit $?
+    on_rofi_exit $? "$item"
   fi
 
   folder_id=$(echo "$folders" | jq -r ".[] | select(.name == \"$folder\").id")
@@ -115,7 +119,32 @@ on_rofi_exit() {
     11) load_items; show_items;;
     12) show_urls;;
     13) show_folders;;
+    14) auto_type all "$2";;
+    15) auto_type username "$2";;
+    16) auto_type password "$2";;
     *) exit "$1";;
+  esac
+}
+
+# Auto type using xdotool
+# $1: what to type; all, username, password
+# $2: item name
+auto_type() {
+  item=$(echo "$ITEMS" | jq -r ".[] | select(.name == \"$2\").login")
+  sleep 0.3
+
+  case "$1" in
+    all)
+      xdotool type "$(echo "$item" | jq -r ".username")"
+      xdotool key Tab
+      xdotool type "$(echo "$item" | jq -r ".password")"
+      ;;
+    username)
+      xdotool type "$(echo "$item" | jq -r ".username")"
+      ;;
+    password)
+      xdotool type "$(echo "$item" | jq -r ".password")"
+      ;;
   esac
 }
 

@@ -68,6 +68,13 @@ Examples:
   - <kbd>Alt</kbd>+<kbd>n</kbd>: Search on names
   - <kbd>Alt</kbd>+<kbd>c</kbd>: Select folder to search in
 
+### Auto Typing
+You can use bitwarden-rofi to auto type your *username*, *password* or *both* by using xdotool to autofill forms.
+  - <kbd>Alt</kbd>+<kbd>1</kbd>: Type username and password
+  - <kbd>Alt</kbd>+<kbd>2</kbd>: Type only the username
+  - <kbd>Alt</kbd>+<kbd>3</kbd>: Type only the password
+
+
 ## Install
 
 ### Via package managers
@@ -88,6 +95,7 @@ Install these dependencies:
 - bitwarden-cli
 - jq
 - xclip or xsel
+- xdotool
 
 Then download the script file and place it somewhere on your `$PATH` and grant it
 the `+x` permission.

@@ -154,8 +154,10 @@ select_copy_command() {
     CLIPBOARD_MODE=xclip
   elif hash xsel 2>/dev/null; then
     CLIPBOARD_MODE=xsel
+  elif hash wl-copy 2>/dev/null; then
+    CLIPBOARD_MODE=wayland
   else
-    exit_error 1 "No clipboard command found. Please install either xclip or xsel."
+    exit_error 1 "No clipboard command found. Please install either xclip, xsel, or wl-clipboard."
   fi
 }
 
@@ -193,6 +195,18 @@ clipboard-xsel-get() {
 
 clipboard-xsel-clear() {
   xsel --clipboard --delete
+}
+
+clipboard-wayland-set() {
+  wl-copy
+}
+
+clipboard-wayland-get() {
+  wl-paste
+}
+
+clipboard-wayland-clear() {
+  wl-copy --clear
 }
 
 # Copy the password

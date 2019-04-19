@@ -44,17 +44,30 @@ exit_error() {
 # Show the Rofi menu with options
 # Reads items from stdin
 rofi_menu() {
+
+  actions=(
+    -kb-custom-1 alt+r
+    -kb-custom-2 alt+n
+    -kb-custom-3 alt+u
+    -kb-custom-4 alt+c
+  )
+
+  msg="<b>Alt+r</b>: sync      | <b>Alt+u</b>: urls      | <b>Alt+n</b>: names     | <b>Alt+c</b>: folders"
+
+  hash xdotool 2>/dev/null && {
+    actions+=(
+      -kb-custom-5 Alt+1
+      -kb-custom-6 Alt+2
+      -kb-custom-7 Alt+3
+    )
+    msg+="
+<b>Alt+1</b>: Type all  | <b>Alt+2</b>: Type user | <b>Alt+3</b>: Type pass"
+  }
+
   rofi -dmenu -p 'Name' \
     -i -no-custom \
-    -mesg ' <b>Alt+r</b>: sync      | <b>Alt+u</b>: urls      | <b>Alt+n</b>: names     | <b>Alt+c</b>: folders
- <b>Alt+1</b>: Type all  | <b>Alt+2</b>: Type user | <b>Alt+3</b>: Type pass' \
-    -kb-custom-1 alt+r \
-    -kb-custom-2 alt+n \
-    -kb-custom-3 alt+u \
-    -kb-custom-4 alt+c \
-    -kb-custom-5 "Alt+1" \
-    -kb-custom-6 "Alt+2" \
-    -kb-custom-7 "Alt+3" \
+    -mesg "$msg" \
+    ${actions[@]} \
     "${ROFI_OPTIONS[@]}"
 }
 

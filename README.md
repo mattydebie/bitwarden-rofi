@@ -85,8 +85,7 @@ You can use bitwarden-rofi to auto type your *username*, *password* or *both* by
 
 #### Arch Linux (AUR)
 
-Install the `bitwarden-rofi` AUR package along with either `xclip` or `xsel`
-(not installed automatically).
+Install the `bitwarden-rofi` AUR package along with `xclip` or `xsel` for Xorg or `wl-clipboard` for Wayland (not installed automatically).
 
 ### Via source
 
@@ -94,7 +93,7 @@ Install these dependencies:
 
 - bitwarden-cli
 - jq
-- xclip or xsel
+- xclip, xsel, or wl-clipboard
 - xdotool
 
 Then download the script file and place it somewhere on your `$PATH` and grant it

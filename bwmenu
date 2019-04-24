@@ -5,6 +5,7 @@ VERSION="0.3"
 DEFAULT_CLEAR=5
 
 # Options
+AUTO_LOCK=no # Locks the Vault on exit
 CLEAR=$DEFAULT_CLEAR # Clear password after N seconds (0 to disable)
 SHOW_PASSWORD=no # Show part of the password in the notification
 BW_HASH_FILE=~/.bwhash # File to store the BitWarden session in
@@ -262,9 +263,16 @@ show_copy_notification() {
   notify-send "$title" "$body" "${extra_options[@]}" -i /usr/share/icons/hicolor/64x64/apps/bitwarden.png
 }
 
+# Locks the Bitwarden Vault if auto-lock is enabled
+lock_vault_check() {
+  if [[ $AUTO_LOCK == "yes" ]]; then
+    bw lock
+  fi
+}
+
 parse_cli_arguments() {
   # Use GNU getopt to parse command line arguments
-  if ! ARGUMENTS=$(getopt -o c:C --long clear:,no-clear,show-password,state-path:,help,version -- "$@"); then
+  if ! ARGUMENTS=$(getopt -o c:C --long clear:,no-clear,auto-lock,show-password,state-path:,help,version -- "$@"); then
     exit_error 1 "Failed to parse command-line arguments"
   fi
   eval set -- "$ARGUMENTS"
@@ -284,6 +292,9 @@ Options:
 
   --version
       Show version information and exit.
+
+  --auto-lock
+      Lock the Vault as soon as the program exits.
 
   -c <SECONDS>, --clear <SECONDS>, --clear=<SECONDS>
       Clear password from clipboard after this many seconds.
@@ -327,6 +338,10 @@ USAGE
         shift
         exit 0
         ;;
+      --auto-lock )
+        AUTO_LOCK=yes
+        shift
+        ;;
       -c | --clear )
         CLEAR="$2"
         shift 2
@@ -366,3 +381,5 @@ init_state
 select_copy_command
 load_items
 show_items
+lock_vault_check
+

@@ -25,6 +25,11 @@ Options:
   --version
       Show version information and exit.
 
+  --auto-lock <SECONDS>
+      Automatically lock the Vault <SECONDS> seconds after last unlock.
+      Use 0 to lock immediatly.
+      Default: 900 (15 minutes)
+
   -c <SECONDS>, --clear <SECONDS>, --clear=<SECONDS>
       Clear password from clipboard after this many seconds.
       Defaults: 5 seconds.
@@ -36,25 +41,12 @@ Options:
   --show-password
       Show the first 4 characters of the copied password in the notification.
 
-  --state-path <PATH>, --state-path=<PATH>
-      Store the Bitwarden session information in this file. This file makes it
-      possible to reuse your session multiple times and keep you from having to
-      enter your master password over and over again.
-      Default: "~/.bwhash".
-
-      NOTE: The "~" character will not be expanded properly unless you put a
-      space between the argument and the value.
-
 Examples:
   # Default options work well
   bwmenu
 
-  # Tilde can be used when you put space in arguments.
-  bwmenu -c 10 --state-path ~/.cache/bwmenu
-  bwmenu -c 10 --state-path=$HOME/.cache/bwmenu
-
-  # XDG-compatible state location
-  bwmenu --state-path=${XDG_RUNTIME_DIR}/bwmenu-state
+  # Immediatly lock the Vault after use
+  bwmenu --auto-lock 0
 
   # Place rofi on top of screen, like a Quake console
   bwmenu -- -location 2

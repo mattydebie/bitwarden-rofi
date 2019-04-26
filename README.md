@@ -13,7 +13,7 @@ You can either execute the script from a terminal or by binding it to a key
 combination in your window manager.
 
 ```
-bwmenu 0.3
+bwmenu 0.4
 
 Usage:
   bwmenu [options] -- [rofi options]
@@ -111,6 +111,8 @@ mkdir -p ~/.local/bin && \
 Released under the GNU General Public License, version 3. See `LICENSE` file.
 
 Copyright © 2018-2019
-  * Matthias De Bie
-  * Magnus Bergmark
+  * Andreas Backx
+  * Daniel Prado
   * Jonathan Raphaelson.
+  * Magnus Bergmark
+  * Matthias De Bie

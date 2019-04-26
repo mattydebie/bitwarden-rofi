@@ -1,4 +1,4 @@
-# BitWarden Rofi Menu
+# Bitwarden Rofi Menu
 
 This is a work in progress to get the BitWarden cli functionality in an easy Rofi menu.
 On selecting an entry, the password is copied to your clipboard for 5 seconds.

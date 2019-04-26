@@ -3,11 +3,12 @@
 NAME="$(basename "$0")"
 VERSION="0.3"
 DEFAULT_CLEAR=5
+BW_HASH=
 
 # Options
 CLEAR=$DEFAULT_CLEAR # Clear password after N seconds (0 to disable)
 SHOW_PASSWORD=no # Show part of the password in the notification
-BW_HASH_FILE=~/.bwhash # File to store the BitWarden session in
+AUTO_LOCK=900 # 15 minutes, default for bitwarden apps
 
 # Holds the available items in memory
 ITEMS=
@@ -18,18 +19,32 @@ CLIPBOARD_MODE=
 # Populated in parse_cli_arguments
 ROFI_OPTIONS=()
 
+ask_password() {
+  mpw=$(rofi -dmenu -p "Master Password" -password -lines 0) || exit $?
+  echo "$mpw" | bw unlock 2>/dev/null | grep 'export' | sed -E 's/.*export BW_SESSION="(.*==)"$/\1/' || exit_error $? "Could not unlock vault"
+}
+
+get_session_key() {
+  if [ $AUTO_LOCK -eq 0 ]; then
+    keyctl purge user bw_session &>/dev/null
+    BW_HASH=$(ask_password)
+  else
+    if ! key_id=$(keyctl request user bw_session 2>/dev/null); then
+      session=$(ask_password)
+      [[ -z "$session" ]] && exit_error 1 "Could not unlock vault"
+      key_id=$(echo "$session" | keyctl padd user bw_session @u)
+    fi
+
+    keyctl timeout "$key_id" $AUTO_LOCK
+    BW_HASH=$(keyctl pipe "$key_id")
+  fi
+}
+
 # source the hash file to gain access to the BitWarden CLI
 # Pre fetch all the items
 load_items() {
-  # shellcheck disable=SC1090
-  source "$BW_HASH_FILE"
-  if ! ITEMS=$(bw list items 2>/dev/null); then
-    mpw=$(rofi -dmenu -p "Master Password" -password) || exit $?
-    echo "$mpw" | bw unlock | grep -e 'export.*=="' -o > $BW_HASH_FILE || {
-      exit_error 1 "Failed to unlock BitWarden.
-Please try again."
-    }
-    load_items
+  if ! ITEMS=$(bw list items --session "$BW_HASH" 2>/dev/null); then
+    exit_error $? "Could not load items"
   fi
 }
 
@@ -67,7 +82,7 @@ rofi_menu() {
   rofi -dmenu -p 'Name' \
     -i -no-custom \
     -mesg "$msg" \
-    ${actions[@]} \
+    "${actions[@]}" \
     "${ROFI_OPTIONS[@]}"
 }
 
@@ -93,7 +108,7 @@ show_urls() {
     | jq -r '.[] | select(has("login")) | .login | select(has("uris")).uris | .[].uri' \
     | rofi_menu
   ); then
-    ITEMS=$(bw list items --url "$url")
+    ITEMS=$(bw list items --url "$url" --session "$BW_HASH")
     if [[ $(echo "$ITEMS" | jq -r 'length') -gt 1 ]]; then
       show_items
     else
@@ -106,20 +121,20 @@ show_urls() {
 }
 
 show_folders() {
-  folders=$(bw list folders)
+  folders=$(bw list folders --session "$BW_HASH")
   if ! folder=$(echo "$folders" | jq -r '.[] | .name' | rofi_menu); then
     on_rofi_exit $? "$item"
   fi
 
   folder_id=$(echo "$folders" | jq -r ".[] | select(.name == \"$folder\").id")
 
-  ITEMS=$(bw list items --folderid "$folder_id")
+  ITEMS=$(bw list items --folderid "$folder_id" --session "$BW_HASH")
   show_items
 }
 
 # re-sync the BitWarden items with the server
 sync_bitwarden() {
-  bw sync &>/dev/null || exit_error 1 "Failed to sync bitwarden"
+  bw sync --session "$BW_HASH" &>/dev/null || exit_error 1 "Failed to sync bitwarden"
 
   load_items
   show_items
@@ -264,7 +279,7 @@ show_copy_notification() {
 
 parse_cli_arguments() {
   # Use GNU getopt to parse command line arguments
-  if ! ARGUMENTS=$(getopt -o c:C --long clear:,no-clear,show-password,state-path:,help,version -- "$@"); then
+  if ! ARGUMENTS=$(getopt -o c:C --long auto-lock:,clear:,no-clear,show-password,state-path:,help,version -- "$@"); then
     exit_error 1 "Failed to parse command-line arguments"
   fi
   eval set -- "$ARGUMENTS"
@@ -285,6 +300,11 @@ Options:
   --version
       Show version information and exit.
 
+  --auto-lock <SECONDS>
+      Automatically lock the Vault <SECONDS> seconds after last unlock.
+      Use 0 to lock immediatly.
+      Default: 900 (15 minutes)
+
   -c <SECONDS>, --clear <SECONDS>, --clear=<SECONDS>
       Clear password from clipboard after this many seconds.
       Defaults: ${DEFAULT_CLEAR} seconds.
@@ -296,25 +316,12 @@ Options:
   --show-password
       Show the first 4 characters of the copied password in the notification.
 
-  --state-path <PATH>, --state-path=<PATH>
-      Store the Bitwarden session information in this file. This file makes it
-      possible to reuse your session multiple times and keep you from having to
-      enter your master password over and over again.
-      Default: "${BW_HASH_FILE}".
-
-      NOTE: The "~" character will not be expanded properly unless you put a
-      space between the argument and the value.
-
 Examples:
   # Default options work well
   $NAME
 
-  # Tilde can be used when you put space in arguments.
-  $NAME -c 10 --state-path ~/.cache/bwmenu
-  $NAME -c 10 --state-path=$HOME/.cache/bwmenu
-
-  # XDG-compatible state location
-  $NAME --state-path=\${XDG_RUNTIME_DIR}/bwmenu-state
+  # Immediatly lock the Vault after use
+  $NAME --auto-lock 0
 
   # Place rofi on top of screen, like a Quake console
   $NAME -- -location 2
@@ -326,6 +333,10 @@ USAGE
         echo "$NAME $VERSION"
         shift
         exit 0
+        ;;
+      --auto-lock )
+        AUTO_LOCK=$2
+        shift 2
         ;;
       -c | --clear )
         CLEAR="$2"
@@ -339,10 +350,6 @@ USAGE
         SHOW_PASSWORD=yes
         shift
         ;;
-      --state-path )
-        BW_HASH_FILE="$2"
-        shift 2
-        ;;
       -- )
         shift
         ROFI_OPTIONS=("$@")
@@ -354,15 +361,9 @@ USAGE
   done
 }
 
-init_state() {
-  if ! [[ -f "$BW_HASH_FILE" ]]; then
-    touch "$BW_HASH_FILE"
-    chmod 600 "$BW_HASH_FILE"
-  fi
-}
-
 parse_cli_arguments "$@"
-init_state
+
+get_session_key
 select_copy_command
 load_items
 show_items

@@ -59,6 +59,7 @@ Examples:
   - <kbd>Alt</kbd>+<kbd>u</kbd>: Search on url
   - <kbd>Alt</kbd>+<kbd>n</kbd>: Search on names
   - <kbd>Alt</kbd>+<kbd>c</kbd>: Select folder to search in
+  - <kbd>Alt</kbd>+<kbd>t</kbd>: Copy the TOTP
 
 ### Auto Typing
 You can use bitwarden-rofi to auto type your *username*, *password* or *both* by using xdotool to autofill forms.

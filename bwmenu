@@ -65,9 +65,10 @@ rofi_menu() {
     -kb-custom-2 alt+n
     -kb-custom-3 alt+u
     -kb-custom-4 alt+c
+    -kb-custom-8 alt+t
   )
 
-  msg="<b>Alt+r</b>: sync      | <b>Alt+u</b>: urls      | <b>Alt+n</b>: names     | <b>Alt+c</b>: folders"
+  msg="<b>Alt+r</b>: sync      | <b>Alt+u</b>: urls      | <b>Alt+n</b>: names     | <b>Alt+c</b>: folders     | <b>Alt+t</b>: totp"
 
   hash xdotool 2>/dev/null && {
     actions+=(
@@ -147,6 +148,7 @@ on_rofi_exit() {
     11) load_items; show_items;;
     12) show_urls;;
     13) show_folders;;
+    17) copy_totp "$2";;
     14) auto_type all "$2";;
     15) auto_type username "$2";;
     16) auto_type password "$2";;
@@ -252,6 +254,19 @@ copy_password() {
       clipboard-clear
     fi
   fi
+}
+
+# Copy the TOTP
+# $1: name of the item apparently
+copy_totp() {
+  id=$(echo "$ITEMS" | jq -r ".[] | select(.name == \"$1\").id")
+
+  if ! totp=$(bw --session "$BW_HASH" get totp "$id"); then
+    exit_error 1 "$totp"
+  fi
+
+  echo -n "$totp" | clipboard-set
+  notify-send "TOTP Copied"
 }
 
 # Show notification about the password being copied.

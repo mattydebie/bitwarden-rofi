@@ -106,6 +106,9 @@ mkdir -p ~/.local/bin && \
   chmod +x ~/.local/bin/bwmenu
 ```
 
+## Hall of Fame
+[![](https://sourcerer.io/fame/mattydebie/mattydebie/bitwarden-rofi/images/0)](https://sourcerer.io/fame/mattydebie/mattydebie/bitwarden-rofi/links/0)[![](https://sourcerer.io/fame/mattydebie/mattydebie/bitwarden-rofi/images/1)](https://sourcerer.io/fame/mattydebie/mattydebie/bitwarden-rofi/links/1)[![](https://sourcerer.io/fame/mattydebie/mattydebie/bitwarden-rofi/images/2)](https://sourcerer.io/fame/mattydebie/mattydebie/bitwarden-rofi/links/2)[![](https://sourcerer.io/fame/mattydebie/mattydebie/bitwarden-rofi/images/3)](https://sourcerer.io/fame/mattydebie/mattydebie/bitwarden-rofi/links/3)[![](https://sourcerer.io/fame/mattydebie/mattydebie/bitwarden-rofi/images/4)](https://sourcerer.io/fame/mattydebie/mattydebie/bitwarden-rofi/links/4)[![](https://sourcerer.io/fame/mattydebie/mattydebie/bitwarden-rofi/images/5)](https://sourcerer.io/fame/mattydebie/mattydebie/bitwarden-rofi/links/5)[![](https://sourcerer.io/fame/mattydebie/mattydebie/bitwarden-rofi/images/6)](https://sourcerer.io/fame/mattydebie/mattydebie/bitwarden-rofi/links/6)[![](https://sourcerer.io/fame/mattydebie/mattydebie/bitwarden-rofi/images/7)](https://sourcerer.io/fame/mattydebie/mattydebie/bitwarden-rofi/links/7)
+
 ## License
 
 Released under the GNU General Public License, version 3. See `LICENSE` file.

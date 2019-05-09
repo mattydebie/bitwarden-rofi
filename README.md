@@ -28,6 +28,7 @@ Options:
   --auto-lock <SECONDS>
       Automatically lock the Vault <SECONDS> seconds after last unlock.
       Use 0 to lock immediatly.
+      Use -1 to disable.
       Default: 900 (15 minutes)
 
   -c <SECONDS>, --clear <SECONDS>, --clear=<SECONDS>
@@ -48,6 +49,9 @@ Examples:
   # Immediatly lock the Vault after use
   bwmenu --auto-lock 0
 
+  # Never lock the Vault
+  bwmenu --auto-lock -1
+
   # Place rofi on top of screen, like a Quake console
   bwmenu -- -location 2
 ```
@@ -60,6 +64,7 @@ Examples:
   - <kbd>Alt</kbd>+<kbd>n</kbd>: Search on names
   - <kbd>Alt</kbd>+<kbd>c</kbd>: Select folder to search in
   - <kbd>Alt</kbd>+<kbd>t</kbd>: Copy the TOTP
+  - <kbd>Alt</kbd>+<kbd>L</kbd>: Lock and exit
 
 ### Auto Typing
 You can use bitwarden-rofi to auto type your *username*, *password* or *both* by using xdotool to autofill forms.
@@ -120,3 +125,4 @@ Copyright © 2018-2019
   * Jonathan Raphaelson.
   * Magnus Bergmark
   * Matthias De Bie
+  * Remy Rojas

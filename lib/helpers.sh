@@ -1,0 +1,30 @@
+#!/bin/bash
+# Helper functions
+
+# Extract item or items matching .name, including deduplication
+# $1: item name, prepended or not with deduplication mark
+array_from_name() {
+  item_name="$(echo "$1" | sed "s/$DEDUP_MARK //")"
+  echo "$ITEMS" | jq -r ". | map(select((.name == \"$item_name\") and (.type == $TYPE_LOGIN)))"
+}
+
+# Extract item matching .id
+# $1: string starting with ".id:"
+array_from_id() {
+  echo "$ITEMS" | jq -r ". | map(select(.id == \"$1\"))"
+}
+
+# Count the number of items in an array. Return true if more than 1 or none
+# $1: Array of items
+not_unique() {
+  item_count=$(echo "$1" | jq -r '. | length')
+  ! [[ $item_count -eq 1 ]]
+}
+
+# Pipe a document and deduplicate lines.
+# Mark those duplicated by prepending $DEDUP_MARK
+dedup_lines() {
+  sort | uniq -c \
+  | sed "s/^\s*1 //" \
+  | sed -r "s/^\s*[0-9]+ /$DEDUP_MARK /"
+}

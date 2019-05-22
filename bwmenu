@@ -16,8 +16,19 @@ ITEMS=
 # Stores which command will be used to deal with clipboards
 CLIPBOARD_MODE=
 
+# Item type classification
+TYPE_LOGIN=1
+TYPE_NOTE=2
+TYPE_CARD=3
+TYPE_IDENTITY=4
+
 # Populated in parse_cli_arguments
 ROFI_OPTIONS=()
+DEDUP_MARK="(+)"
+
+# Source helper functions
+DIR="$(dirname "$(readlink -f "$0")")"
+source "$DIR/lib/helpers.sh"
 
 ask_password() {
   mpw=$(rofi -dmenu -p "Master Password" -password -lines 0) || exit $?
@@ -94,13 +105,34 @@ rofi_menu() {
 show_items() {
   if item=$(
     echo "$ITEMS" \
-    | jq -r ".[] | select( has( \"login\" ) ) | .name" \
+    | jq -r ".[] | select( has( \"login\" ) ) | \"\\(.name)\"" \
+    | dedup_lines \
     | rofi_menu
   ); then
-    item=$(echo "$ITEMS" | jq -r ".[] | select(.name == \"$item\")")
-    copy_password "$item"
+    item_array="$(array_from_name "$item")"
+    copy_password "$item_array"
   else
-    on_rofi_exit $? "$item"
+    rofi_exit_code=$?
+    item_array="$(array_from_name "$item")"
+    on_rofi_exit "$rofi_exit_code" "$item_array"
+  fi
+}
+
+# Similar to show_items() but using the item's ID for deduplication
+show_full_items() {
+  if item=$(
+    echo "$ITEMS" \
+    | jq -r ".[] | select( has( \"login\" )) | \"\\(.id): name: \\(.name), username: \\(.login.username)\"" \
+    | rofi_menu
+  ); then
+    item_id="$(echo "$item" | cut -d ':' -f 1)"
+    item_array="$(array_from_id "$item_id")"
+    copy_password "$item_array"
+  else
+    rofi_exit_code=$?
+    item_id="$(echo "$item" | cut -d ':' -f 1)"
+    item_array="$(array_from_id "$item_id")"
+    on_rofi_exit "$rofi_exit_code" "$item_array"
   fi
 }
 
@@ -112,28 +144,29 @@ show_urls() {
     | jq -r '.[] | select(has("login")) | .login | select(has("uris")).uris | .[].uri' \
     | rofi_menu
   ); then
-    ITEMS=$(bw list items --url "$url" --session "$BW_HASH")
-    if [[ $(echo "$ITEMS" | jq -r 'length') -gt 1 ]]; then
-      show_items
-    else
-      item=$(echo "$ITEMS" | jq -r '.[0]')
-      copy_password "$item"
-    fi
+    item_array="$(bw list items --url "$url" --session "$BW_HASH")"
+    copy_password "$item_array"
   else
-    on_rofi_exit $? "$item"
+    rofi_exit_code="$?"
+    item_array="$(bw list items --url "$url" --session "$BW_HASH")"
+    on_rofi_exit "$rofi_exit_code" "$item_array"
   fi
 }
 
 show_folders() {
   folders=$(bw list folders --session "$BW_HASH")
-  if ! folder=$(echo "$folders" | jq -r '.[] | .name' | rofi_menu); then
-    on_rofi_exit $? "$item"
+  if folder=$(echo "$folders" | jq -r '.[] | .name' | rofi_menu); then
+
+    folder_id=$(echo "$folders" | jq -r ".[] | select(.name == \"$folder\").id")
+
+    ITEMS=$(bw list items --folderid "$folder_id" --session "$BW_HASH")
+    show_items
+  else
+    rofi_exit_code="$?"
+    folder_id=$(echo "$folders" | jq -r ".[] | select(.name == \"$folder\").id")
+    item_array=$(bw list items --folderid "$folder_id" --session "$BW_HASH")
+    on_rofi_exit "$rofi_exit_code" "$item_array"
   fi
-
-  folder_id=$(echo "$folders" | jq -r ".[] | select(.name == \"$folder\").id")
-
-  ITEMS=$(bw list items --folderid "$folder_id" --session "$BW_HASH")
-  show_items
 }
 
 # re-sync the BitWarden items with the server
@@ -162,24 +195,28 @@ on_rofi_exit() {
 
 # Auto type using xdotool
 # $1: what to type; all, username, password
-# $2: item name
+# $2: item array
 auto_type() {
-  item=$(echo "$ITEMS" | jq -r ".[] | select(.name == \"$2\").login")
-  sleep 0.3
+  if not_unique "$2"; then
+    ITEMS="$2"
+    show_full_items
+  else
+    sleep 0.3
+    case "$1" in
+      all)
+        xdotool type "$(echo "$2" | jq -r '.[0].login.username')"
+        xdotool key Tab
+        xdotool type "$(echo "$2" | jq -r '.[0].login.password')"
+        ;;
+      username)
+        xdotool type "$(echo "$2" | jq -r '.[0].login.username')"
+        ;;
+      password)
+        xdotool type "$(echo "$2" | jq -r '.[0].login.password')"
+        ;;
+    esac
+  fi
 
-  case "$1" in
-    all)
-      xdotool type "$(echo "$item" | jq -r ".username")"
-      xdotool key Tab
-      xdotool type "$(echo "$item" | jq -r ".password")"
-      ;;
-    username)
-      xdotool type "$(echo "$item" | jq -r ".username")"
-      ;;
-    password)
-      xdotool type "$(echo "$item" | jq -r ".password")"
-      ;;
-  esac
 }
 
 # Set $CLIPBOARD_MODE to a command that will put stdin into the clipboard.
@@ -245,32 +282,42 @@ clipboard-wayland-clear() {
 
 # Copy the password
 # copy to clipboard and give the user feedback that the password is copied
-# $1: json item
+# $1: json array of items
 copy_password() {
-  pass=$(echo "$1" | jq -r '.login.password')
+  if not_unique "$1"; then
+    ITEMS="$1"
+    show_full_items
+  else
+    pass="$(echo "$1" | jq -r '.[0].login.password')"
 
-  show_copy_notification "$1"
-  echo -n "$pass" | clipboard-set
+    show_copy_notification "$(echo "$1" | jq -r '.[0]')"
+    echo -n "$pass" | clipboard-set
 
-  if [[ $CLEAR -gt 0 ]]; then
-    sleep "$CLEAR"
-    if [[ "$(clipboard-get)" == "$pass" ]]; then
-      clipboard-clear
+    if [[ $CLEAR -gt 0 ]]; then
+      sleep "$CLEAR"
+      if [[ "$(clipboard-get)" == "$pass" ]]; then
+        clipboard-clear
+      fi
     fi
   fi
 }
 
 # Copy the TOTP
-# $1: name of the item apparently
+# $1: item array
 copy_totp() {
-  id=$(echo "$ITEMS" | jq -r ".[] | select(.name == \"$1\").id")
+  if not_unique "$1"; then
+    ITEMS="$item_array"
+    show_full_items
+  else
+    id=$(echo "$1" | jq -r ".[0].id")
 
-  if ! totp=$(bw --session "$BW_HASH" get totp "$id"); then
-    exit_error 1 "$totp"
+    if ! totp=$(bw --session "$BW_HASH" get totp "$id"); then
+      exit_error 1 "$totp"
+    fi
+
+    echo -n "$totp" | clipboard-set
+    notify-send "TOTP Copied"
   fi
-
-  echo -n "$totp" | clipboard-set
-  notify-send "TOTP Copied"
 }
 
 # Lock the vault by purging the key used to store the session hash

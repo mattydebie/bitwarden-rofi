@@ -28,7 +28,7 @@ DEDUP_MARK="(+)"
 
 # Source helper functions
 DIR="$(dirname "$(readlink -f "$0")")"
-source "$DIR/lib/helpers.sh"
+source "$DIR/lib-bwmenu"
 
 ask_password() {
   mpw=$(rofi -dmenu -p "Master Password" -password -lines 0) || exit $?

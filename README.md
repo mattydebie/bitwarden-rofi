@@ -42,6 +42,20 @@ Options:
   --show-password
       Show the first 4 characters of the copied password in the notification.
 
+Quick Actions:
+  When hovering over an item in the rofi menu, you can make use of Quick Actions.
+
+  Alt+r  Resync your vault
+
+  Alt+u  Search through urls
+  Alt+n  Search through names
+  Alt+c  Search through folders
+
+  Alt+t  Copy the TOTP
+  Alt+1  Autotype the username and password [needs xdotool]
+  Alt+2  Autotype the username [needs xdotool]
+  Alt+3  Autotype the password [needs xdotool]
+
 Examples:
   # Default options work well
   bwmenu

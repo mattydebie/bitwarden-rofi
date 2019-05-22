@@ -401,6 +401,8 @@ Quick Actions:
   Alt+1  Autotype the username and password [needs xdotool]
   Alt+2  Autotype the username [needs xdotool]
   Alt+3  Autotype the password [needs xdotool]
+  
+  Alt+L  Lock your vault
 
 Examples:
   # Default options work well

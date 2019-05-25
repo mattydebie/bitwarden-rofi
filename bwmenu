@@ -180,14 +180,16 @@ auto_type() {
 
 # Set $CLIPBOARD_MODE to a command that will put stdin into the clipboard.
 select_copy_command() {
-  if hash xclip 2>/dev/null; then
-    CLIPBOARD_MODE=xclip
-  elif hash xsel 2>/dev/null; then
-    CLIPBOARD_MODE=xsel
-  elif hash wl-copy 2>/dev/null; then
-    CLIPBOARD_MODE=wayland
-  else
-    exit_error 1 "No clipboard command found. Please install either xclip, xsel, or wl-clipboard."
+  if [ -z $CLIPBOARD_MODE ]; then
+    if hash xclip 2>/dev/null; then
+      CLIPBOARD_MODE=xclip
+    elif hash xsel 2>/dev/null; then
+      CLIPBOARD_MODE=xsel
+    elif hash wl-copy 2>/dev/null; then
+      CLIPBOARD_MODE=wayland
+    else
+      exit_error 1 "No clipboard command found. Please install either xclip, xsel, or wl-clipboard."
+    fi
   fi
 }
 
@@ -328,6 +330,11 @@ Options:
       Don't automatically clear the password from the clipboard. This disables
       the default --clear option.
 
+  --clipboard-mode <MODE>, --clipboard-mode=<MODE>
+      Set the "mode" (program) to be used as clipboard: 'xclip' or 'xsel'.
+      If this parameter is not present, the script will try to find one of them
+      starting with 'xclip'.
+
   --show-password
       Show the first 4 characters of the copied password in the notification.
 
@@ -340,6 +347,10 @@ Examples:
 
   # Place rofi on top of screen, like a Quake console
   $NAME -- -location 2
+
+  # You prefer to use xsel as clipboard while xclip is also in path
+  $NAME --clipboard-mode=xsel
+
 USAGE
         shift
         exit 0
@@ -364,6 +375,10 @@ USAGE
       --show-password )
         SHOW_PASSWORD=yes
         shift
+        ;;
+      --clipboard-mode )
+        CLIPBOARD_MODE="$2"
+        shift 2
         ;;
       -- )
         shift

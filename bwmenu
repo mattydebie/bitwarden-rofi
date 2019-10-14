@@ -240,9 +240,9 @@ auto_type() {
 # Set $AUTOTYPE_MODE to a command that will emulate keyboard input
 select_autotype_command() {
   if [[ -z "$AUTOTYPE_MODE" ]]; then
-    if hash ydotool 2>/dev/null; then
+    if [ "$XDG_SESSION_TYPE" = "wayland" ] && hash ydotool 2>/dev/null; then
       AUTOTYPE_MODE=(sudo ydotool)
-    elif hash xdotool 2>/dev/null; then
+    elif [ "$XDG_SESSION_TYPE" != "wayland" ] && hash xdotool 2>/dev/null; then
       AUTOTYPE_MODE=xdotool
     fi
   fi
@@ -260,15 +260,14 @@ type_tab() {
 # Set $CLIPBOARD_MODE to a command that will put stdin into the clipboard.
 select_copy_command() {
   if [[ -z "$CLIPBOARD_MODE" ]]; then
-    if hash xclip 2>/dev/null; then
+    if [ "$XDG_SESSION_TYPE" = "wayland" ]; then
+      hash wl-copy 2>/dev/null && CLIPBOARD_MODE=wayland
+    elif hash xclip 2>/dev/null; then
       CLIPBOARD_MODE=xclip
     elif hash xsel 2>/dev/null; then
       CLIPBOARD_MODE=xsel
-    elif hash wl-copy 2>/dev/null; then
-      CLIPBOARD_MODE=wayland
-    else
-      exit_error 1 "No clipboard command found. Please install either xclip, xsel, or wl-clipboard."
     fi
+    [ -z "$CLIPBOARD_MODE" ] && exit_error 1 "No clipboard command found. Please install either xclip, xsel, or wl-clipboard."
   fi
 }
 

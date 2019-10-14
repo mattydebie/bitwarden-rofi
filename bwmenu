@@ -20,7 +20,7 @@ AUTOTYPE_MODE=
 CLIPBOARD_MODE=
 
 # Specify what happens when pressing Enter on an item.
-# Defaults to copy_password, can be changed to (auto_type all) or (auto_type password)
+# Defaults to copy_password, can be changed to (auto_type all) or (auto_type password) or show_item_actions
 ENTER_CMD=copy_password
 
 # Keyboard shortcuts
@@ -275,6 +275,10 @@ clipboard-set() {
   clipboard-${CLIPBOARD_MODE}-set
 }
 
+clipboard-set-primary() {
+  clipboard-${CLIPBOARD_MODE}-set-primary
+}
+
 clipboard-get() {
   clipboard-${CLIPBOARD_MODE}-get
 }
@@ -285,6 +289,10 @@ clipboard-clear() {
 
 clipboard-xclip-set() {
     xclip -selection clipboard -r
+}
+
+clipboard-xclip-set-primary() {
+    xclip -selection primary -r
 }
 
 clipboard-xclip-get() {
@@ -299,6 +307,10 @@ clipboard-xsel-set() {
   xsel --clipboard --input
 }
 
+clipboard-xsel-set-primary() {
+  xsel --clipboard --input --primary
+}
+
 clipboard-xsel-get() {
   xsel --clipboard
 }
@@ -311,12 +323,61 @@ clipboard-wayland-set() {
   wl-copy
 }
 
+clipboard-wayland-set-primary() {
+  wl-copy --primary
+}
+
 clipboard-wayland-get() {
   wl-paste
 }
 
 clipboard-wayland-clear() {
   wl-copy --clear
+}
+
+show_item_actions() {
+  if not_unique "$1"; then
+    ITEMS="$1"
+    show_full_items
+  else
+    actions="$(actions_for_item "$1")"
+    if selection="$(cut -d : -f 1 <<< "$actions" | select_action)"; then
+      selected_action="$(sed "$(( $selection + 1 ))q;d" <<< "$actions")"
+      eval "$(cut -d : -f 2- <<< "$selected_action")"
+    fi
+  fi
+}
+
+actions_for_item() {
+  actions=()
+  username=""
+  password=""
+  while IFS=' ' read path label ; do
+    value="$(jq -re ".[0].$path" <<< "$1")"
+    if [ "$value" != "null" ]; then
+      actions+=("Copy ${label}:echo -n ${value@Q} | clipboard-set")
+      [ "$path" == "login.username" ] && username="$value"
+      [ "$path" == "login.password" ] && password="$value"
+    fi
+  done <<< "login.username username
+login.password password
+login.totp TOTP"
+  uri="$(jq -r 'map(.login.uris[0].uri | select(. != null)) | first' <<< "$1")"
+  if [ "$uri" != "null" ] ; then
+    actions+=("Open URI:xdg-open ${uri@Q}")
+    if [ -n "$password" ] && [ -n "$username" ] ; then
+      actions+=("Copy username and password, open URI:echo -n ${username@Q} | clipboard-set-primary \
+                                                   && echo -n ${password@Q} | clipboard-set \
+                                                   && xdg-open ${uri@Q}")
+    elif [ -n "$password" ] ; then
+      actions+=("Copy password, open URI:echo -n ${password@Q} | clipboard-set && xdg-open ${uri@Q}")
+    fi
+  fi
+  printf '%s\n' "${actions[@]}"
+}
+
+select_action() {
+  rofi -dmenu -p "Action" "$1" -format i
 }
 
 # Copy the password
@@ -362,29 +423,6 @@ copy_totp() {
 # Lock the vault by purging the key used to store the session hash
 lock_vault() {
   keyctl purge user bw_session &>/dev/null
-}
-
-# Show notification about the password being copied.
-# $1: json item
-show_copy_notification() {
-  local title
-  local body=""
-  local extra_options=()
-
-  title="<b>$(echo "$1" | jq -r '.name')</b> copied"
-
-  if [[ $SHOW_PASSWORD == "yes" ]]; then
-    pass=$(echo "$1" | jq -r '.login.password')
-    body="${pass:0:4}****"
-  fi
-
-  if [[ $CLEAR -gt 0 ]]; then
-    body="$body<br>Will be cleared in ${CLEAR} seconds."
-    # Keep notification visible while the clipboard contents are active.
-    extra_options+=("-t" "$((CLEAR * 1000))")
-  fi
-  # not sure if icon will be present everywhere, /usr/share/icons is default icon location
-  notify-send "$title" "$body" "${extra_options[@]}" -i /usr/share/icons/hicolor/64x64/apps/bitwarden.png
 }
 
 parse_cli_arguments() {

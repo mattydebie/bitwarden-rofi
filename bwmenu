@@ -343,7 +343,8 @@ show_item_actions() {
     actions="$(actions_for_item "$1")"
     if selection="$(cut -d : -f 1 <<< "$actions" | select_action)"; then
       selected_action="$(sed "$(( $selection + 1 ))q;d" <<< "$actions")"
-      eval "$(cut -d : -f 2- <<< "$selected_action")"
+      eval "$(cut -d : -f 3- <<< "$selected_action")"
+      show_copy_notification "$(cut -d : -f 2 <<< "$selected_action")"
     fi
   fi
 }
@@ -355,7 +356,7 @@ actions_for_item() {
   while IFS=' ' read path label ; do
     value="$(jq -re ".[0].$path" <<< "$1")"
     if [ "$value" != "null" ]; then
-      actions+=("Copy ${label}:echo -n ${value@Q} | clipboard-set")
+      actions+=("Copy ${label}:${label^} copied to clipboard:echo -n ${value@Q} | clipboard-set")
       [ "$path" == "login.username" ] && username="$value"
       [ "$path" == "login.password" ] && password="$value"
     fi
@@ -364,13 +365,14 @@ login.password password
 login.totp TOTP"
   uri="$(jq -r 'map(.login.uris[0].uri | select(. != null)) | first' <<< "$1")"
   if [ "$uri" != "null" ] ; then
-    actions+=("Open URI:xdg-open ${uri@Q}")
+    actions+=("Open URI::xdg-open ${uri@Q}")
     if [ -n "$password" ] && [ -n "$username" ] ; then
-      actions+=("Copy username and password, open URI:echo -n ${username@Q} | clipboard-set-primary \
-                                                   && echo -n ${password@Q} | clipboard-set \
-                                                   && xdg-open ${uri@Q}")
+      actions+=("Copy username and password, open URI:Username copied to primary selection<br>Password copied to clipboard: \
+                    echo -n ${username@Q} | clipboard-set-primary \
+                 && echo -n ${password@Q} | clipboard-set \
+                 && xdg-open ${uri@Q}")
     elif [ -n "$password" ] ; then
-      actions+=("Copy password, open URI:echo -n ${password@Q} | clipboard-set && xdg-open ${uri@Q}")
+      actions+=("Copy password, open URI:Password copied to clipboard:echo -n ${password@Q} | clipboard-set && xdg-open ${uri@Q}")
     fi
   fi
   printf '%s\n' "${actions[@]}"
@@ -418,6 +420,11 @@ copy_totp() {
     echo -n "$totp" | clipboard-set
     notify-send "TOTP Copied"
   fi
+}
+
+show_copy_notification() {
+  # not sure if icon will be present everywhere, /usr/share/icons is default icon location
+  notify-send "$1" -i /usr/share/icons/hicolor/64x64/apps/bitwarden.png
 }
 
 # Lock the vault by purging the key used to store the session hash

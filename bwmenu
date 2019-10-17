@@ -363,6 +363,11 @@ actions_for_item() {
   done <<< "login.username username
 login.password password
 login.totp TOTP"
+  if [ -n "$password" ] && [ -n "$username" ] ; then
+    actions+=("Copy username and password:Username copied to primary selection<br>Password copied to clipboard: \
+                    echo -n ${username@Q} | clipboard-set-primary \
+                 && echo -n ${password@Q} | clipboard-set")
+  fi
   uri="$(jq -r 'map(.login.uris[0].uri | select(. != null)) | first' <<< "$1")"
   if [ "$uri" != "null" ] ; then
     actions+=("Open URI::xdg-open ${uri@Q}")
@@ -375,11 +380,14 @@ login.totp TOTP"
       actions+=("Copy password, open URI:Password copied to clipboard:echo -n ${password@Q} | clipboard-set && xdg-open ${uri@Q}")
     fi
   fi
+  if notes="$(jq -re '.[0].notes' <<< "$1")" ; then
+    actions+=("Display notes::exit_error 0 ${notes@Q}")
+  fi
   printf '%s\n' "${actions[@]}"
 }
 
 select_action() {
-  rofi -dmenu -p "Action" "$1" -format i
+  rofi -dmenu -p "Action" "$1" -format i -i -no-custom "${ROFI_OPTIONS[@]}"
 }
 
 # Copy the password

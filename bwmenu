@@ -19,7 +19,7 @@ AUTOTYPE_MODE=
 # Stores which command will be used to deal with clipboards
 CLIPBOARD_MODE=
 
-# Specify what happens when pressing Enter on an item. 
+# Specify what happens when pressing Enter on an item.
 # Defaults to copy_password, can be changed to (auto_type all) or (auto_type password)
 ENTER_CMD=copy_password
 

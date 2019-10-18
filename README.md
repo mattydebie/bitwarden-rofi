@@ -87,7 +87,7 @@ You can use bitwarden-rofi to auto type your *username*, *password* or *both* by
   - <kbd>Alt</kbd>+<kbd>1</kbd>: Type username and password
   - <kbd>Alt</kbd>+<kbd>2</kbd>: Type only the username
   - <kbd>Alt</kbd>+<kbd>3</kbd>: Type only the password
-  
+ 
 > __Wayland Users__: For autotyping to work in Wayland, you will need [`ydotool`](https://github.com/ReimuNotMoe/ydotool) working with root permissions (it needs access to /dev/uinput) without asking for password. For example, this can be achieved by adding this line in `visudo`:
 
 `your_username ALL=(ALL) NOPASSWD: /usr/bin/ydotool`
@@ -105,7 +105,7 @@ You can use bitwarden-rofi to auto type your *username*, *password* or *both* by
 Install the `bitwarden-rofi` AUR package for the latest release or the `bitwarden-rofi-git` for the current master.  
 For copying or autotyping, install:
 - *xorg*: `xclip`,`xsel` and/or `xdotool` 
-- *wayland*: `wl-clipboard` and `ydotool` 
+- *wayland*: `wl-clipboard` and `ydotool`
 
 ### Via source
 

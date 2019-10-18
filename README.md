@@ -52,9 +52,9 @@ Quick Actions:
   Alt+c  Search through folders
 
   Alt+t  Copy the TOTP
-  Alt+1  Autotype the username and password [needs xdotool]
-  Alt+2  Autotype the username [needs xdotool]
-  Alt+3  Autotype the password [needs xdotool]
+  Alt+1  Autotype the username and password [needs xdotool (Xorg) / ydotool (Wayland)]
+  Alt+2  Autotype the username [needs xdotool (Xorg) / ydotool (Wayland)]
+  Alt+3  Autotype the password [needs xdotool (Xorg) / ydotool (Wayland)]
   
   Alt+L  Lock your vault
 
@@ -83,11 +83,14 @@ Examples:
   - <kbd>Alt</kbd>+<kbd>L</kbd>: Lock and exit
 
 ### Auto Typing
-You can use bitwarden-rofi to auto type your *username*, *password* or *both* by using xdotool to autofill forms.
+You can use bitwarden-rofi to auto type your *username*, *password* or *both* by using xdotool/ydotool to autofill forms.
   - <kbd>Alt</kbd>+<kbd>1</kbd>: Type username and password
   - <kbd>Alt</kbd>+<kbd>2</kbd>: Type only the username
   - <kbd>Alt</kbd>+<kbd>3</kbd>: Type only the password
+ 
+> __Wayland Users__: For autotyping to work in Wayland, you will need [`ydotool`](https://github.com/ReimuNotMoe/ydotool) working with root permissions (it needs access to /dev/uinput) without asking for password. For example, this can be achieved by adding this line in `visudo`:
 
+`your_username ALL=(ALL) NOPASSWD: /usr/bin/ydotool`
 
 ## Install
 
@@ -102,7 +105,7 @@ You can use bitwarden-rofi to auto type your *username*, *password* or *both* by
 Install the `bitwarden-rofi` AUR package for the latest release or the `bitwarden-rofi-git` for the current master.  
 For copying or autotyping, install:
 - *xorg*: `xclip`,`xsel` and/or `xdotool` 
-- *wayland*: `wl-clipboard`
+- *wayland*: `wl-clipboard` and `ydotool`
 
 ### Via source
 
@@ -115,7 +118,7 @@ Install these **required** dependencies:
 
 **Optionally** install these requirements:
 - xclip, xsel, or wl-clipboard
-- xdotool
+- xdotool or ydotool
 
 Then download the script file and place it somewhere on your `$PATH` and grant it
 the `+x` permission.
@@ -144,3 +147,4 @@ Copyright © 2018-2019
   * Magnus Bergmark
   * Matthias De Bie
   * Remy Rojas
+  * Baptiste Pierrat

@@ -13,8 +13,26 @@ AUTO_LOCK=900 # 15 minutes, default for bitwarden apps
 # Holds the available items in memory
 ITEMS=
 
+# Stores which command will be used to emulate keyboard type
+AUTOTYPE_MODE=
+
 # Stores which command will be used to deal with clipboards
 CLIPBOARD_MODE=
+
+# Specify what happens when pressing Enter on an item.
+# Defaults to copy_password, can be changed to (auto_type all) or (auto_type password)
+ENTER_CMD=copy_password
+
+# Keyboard shortcuts
+KB_SYNC="Alt+r"
+KB_URLSEARCH="Alt+u"
+KB_NAMESEARCH="Alt+n"
+KB_FOLDERSELECT="Alt+c"
+KB_TOTPCOPY="Alt+t"
+KB_LOCK="Alt+L"
+KB_TYPEALL="Alt+1"
+KB_TYPEUSER="Alt+2"
+KB_TYPEPASS="Alt+3"
 
 # Item type classification
 TYPE_LOGIN=1
@@ -74,24 +92,24 @@ exit_error() {
 rofi_menu() {
 
   actions=(
-    -kb-custom-1 alt+r
-    -kb-custom-2 alt+n
-    -kb-custom-3 alt+u
-    -kb-custom-4 alt+c
-    -kb-custom-8 alt+t
-    -kb-custom-9 alt+L
+    -kb-custom-1 $KB_SYNC
+    -kb-custom-2 $KB_NAMESEARCH
+    -kb-custom-3 $KB_URLSEARCH
+    -kb-custom-4 $KB_FOLDERSELECT
+    -kb-custom-8 $KB_TOTPCOPY
+    -kb-custom-9 $KB_LOCK
   )
 
-  msg="<b>Alt+r</b>: sync      | <b>Alt+u</b>: urls      | <b>Alt+n</b>: names     | <b>Alt+c</b>: folders     | <b>Alt+t</b>: totp     | <b>Alt+L</b>: lock"
+  msg="<b>$KB_SYNC</b>: sync | <b>$KB_URLSEARCH</b>: urls | <b>$KB_NAMESEARCH</b>: names | <b>$KB_FOLDERSELECT</b>: folders | <b>$KB_TOTPCOPY</b>: totp | <b>$KB_LOCK</b>: lock"
 
-  hash xdotool 2>/dev/null && {
+  [[ ! -z "$AUTOTYPE_MODE" ]] && {
     actions+=(
-      -kb-custom-5 Alt+1
-      -kb-custom-6 Alt+2
-      -kb-custom-7 Alt+3
+      -kb-custom-5 $KB_TYPEALL
+      -kb-custom-6 $KB_TYPEUSER
+      -kb-custom-7 $KB_TYPEPASS
     )
     msg+="
-<b>Alt+1</b>: Type all  | <b>Alt+2</b>: Type user | <b>Alt+3</b>: Type pass"
+<b>$KB_TYPEALL</b>: Type all  | <b>$KB_TYPEUSER</b>: Type user | <b>$KB_TYPEPASS</b>: Type pass"
   }
 
   rofi -dmenu -p 'Name' \
@@ -110,7 +128,7 @@ show_items() {
     | rofi_menu
   ); then
     item_array="$(array_from_name "$item")"
-    copy_password "$item_array"
+    "${ENTER_CMD[@]}" "$item_array"
   else
     rofi_exit_code=$?
     item_array="$(array_from_name "$item")"
@@ -127,7 +145,7 @@ show_full_items() {
   ); then
     item_id="$(echo "$item" | cut -d ':' -f 1)"
     item_array="$(array_from_id "$item_id")"
-    copy_password "$item_array"
+    "${ENTER_CMD[@]}" "$item_array"
   else
     rofi_exit_code=$?
     item_id="$(echo "$item" | cut -d ':' -f 1)"
@@ -145,7 +163,7 @@ show_urls() {
     | rofi_menu
   ); then
     item_array="$(bw list items --url "$url" --session "$BW_HASH")"
-    copy_password "$item_array"
+    "${ENTER_CMD[@]}" "$item_array"
   else
     rofi_exit_code="$?"
     item_array="$(bw list items --url "$url" --session "$BW_HASH")"
@@ -193,7 +211,7 @@ on_rofi_exit() {
   esac
 }
 
-# Auto type using xdotool
+# Auto type using xdotool/ydotool
 # $1: what to type; all, username, password
 # $2: item array
 auto_type() {
@@ -204,31 +222,53 @@ auto_type() {
     sleep 0.3
     case "$1" in
       all)
-        xdotool type "$(echo "$2" | jq -r '.[0].login.username')"
-        xdotool key Tab
-        xdotool type "$(echo "$2" | jq -r '.[0].login.password')"
+        type_word "$(echo "$2" | jq -r '.[0].login.username')"
+        type_tab
+        type_word "$(echo "$2" | jq -r '.[0].login.password')"
         ;;
       username)
-        xdotool type "$(echo "$2" | jq -r '.[0].login.username')"
+        type_word "$(echo "$2" | jq -r '.[0].login.username')"
         ;;
       password)
-        xdotool type "$(echo "$2" | jq -r '.[0].login.password')"
+        type_word "$(echo "$2" | jq -r '.[0].login.password')"
         ;;
     esac
   fi
 
 }
 
+# Set $AUTOTYPE_MODE to a command that will emulate keyboard input
+select_autotype_command() {
+  if [[ -z "$AUTOTYPE_MODE" ]]; then
+    if hash ydotool 2>/dev/null; then
+      AUTOTYPE_MODE=(sudo ydotool)
+    elif hash xdotool 2>/dev/null; then
+      AUTOTYPE_MODE=xdotool
+    fi
+  fi
+}
+
+type_word() {
+  "${AUTOTYPE_MODE[@]}" type "$1"
+}
+
+type_tab() {
+  "${AUTOTYPE_MODE[@]}" key tab
+}
+
+
 # Set $CLIPBOARD_MODE to a command that will put stdin into the clipboard.
 select_copy_command() {
-  if hash xclip 2>/dev/null; then
-    CLIPBOARD_MODE=xclip
-  elif hash xsel 2>/dev/null; then
-    CLIPBOARD_MODE=xsel
-  elif hash wl-copy 2>/dev/null; then
-    CLIPBOARD_MODE=wayland
-  else
-    exit_error 1 "No clipboard command found. Please install either xclip, xsel, or wl-clipboard."
+  if [[ -z "$CLIPBOARD_MODE" ]]; then
+    if hash xclip 2>/dev/null; then
+      CLIPBOARD_MODE=xclip
+    elif hash xsel 2>/dev/null; then
+      CLIPBOARD_MODE=xsel
+    elif hash wl-copy 2>/dev/null; then
+      CLIPBOARD_MODE=wayland
+    else
+      exit_error 1 "No clipboard command found. Please install either xclip, xsel, or wl-clipboard."
+    fi
   fi
 }
 
@@ -391,18 +431,18 @@ Options:
 Quick Actions:
   When hovering over an item in the rofi menu, you can make use of Quick Actions.
 
-  Alt+r  Resync your vault
+  $KB_SYNC  Resync your vault
 
-  Alt+u  Search through urls
-  Alt+n  Search through names
-  Alt+c  Search through folders
+  $KB_URLSEARCH  Search through urls
+  $KB_NAMESEARCH  Search through names
+  $KB_FOLDERSELECT  Search through folders
 
-  Alt+t  Copy the TOTP
-  Alt+1  Autotype the username and password [needs xdotool]
-  Alt+2  Autotype the username [needs xdotool]
-  Alt+3  Autotype the password [needs xdotool]
+  $KB_TOTPCOPY  Copy the TOTP
+  $KB_TYPEALL  Autotype the username and password [needs xdotool or ydotool]
+  $KB_TYPEUSER  Autotype the username [needs xdotool or ydotool]
+  $KB_TYPEPASS  Autotype the password [needs xdotool or ydotool]
   
-  Alt+L  Lock your vault
+  $KB_LOCK  Lock your vault
 
 Examples:
   # Default options work well
@@ -455,6 +495,7 @@ USAGE
 parse_cli_arguments "$@"
 
 get_session_key
+select_autotype_command
 select_copy_command
 load_items
 show_items

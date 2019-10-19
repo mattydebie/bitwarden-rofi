@@ -361,8 +361,7 @@ actions_for_item() {
       [ "$path" == "login.password" ] && password="$value"
     fi
   done <<< "login.username username
-login.password password
-login.totp TOTP"
+login.password password"
   if [ -n "$password" ] && [ -n "$username" ] ; then
     actions+=("Copy username and password:Username copied to primary selection<br>Password copied to clipboard: \
                     echo -n ${username@Q} | clipboard-set-primary \
@@ -379,6 +378,9 @@ login.totp TOTP"
     elif [ -n "$password" ] ; then
       actions+=("Copy password, open URI:Password copied to clipboard:echo -n ${password@Q} | clipboard-set && xdg-open ${uri@Q}")
     fi
+  fi
+  if jq -e '.[0].login.totp' > /dev/null <<< "$1" ; then
+    actions+=("Copy TOTP:TOTP copied to clipboard:_copy_totp ${1@Q}")
   fi
   declare -a "custom_field_actions=($(jq -re '.[0].fields | map("Copy " + .name + ":" + .name + " copied to clipboard:clipboard-set " + (.value | @sh)) | @sh' <<< "$1"))"
   for action in "${custom_field_actions[@]}" ; do
@@ -416,6 +418,16 @@ copy_password() {
   fi
 }
 
+_copy_totp() {
+  id=$(echo "$1" | jq -r ".[0].id")
+
+  if ! totp=$(bw --session "$BW_HASH" get totp "$id"); then
+    exit_error 1 "$totp"
+  fi
+
+  echo -n "$totp" | clipboard-set
+}
+
 # Copy the TOTP
 # $1: item array
 copy_totp() {
@@ -423,13 +435,7 @@ copy_totp() {
     ITEMS="$item_array"
     show_full_items
   else
-    id=$(echo "$1" | jq -r ".[0].id")
-
-    if ! totp=$(bw --session "$BW_HASH" get totp "$id"); then
-      exit_error 1 "$totp"
-    fi
-
-    echo -n "$totp" | clipboard-set
+    _copy_totp "$1"
     notify-send "TOTP Copied"
   fi
 }

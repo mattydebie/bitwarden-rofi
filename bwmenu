@@ -351,24 +351,18 @@ show_item_actions() {
 
 actions_for_item() {
   actions=()
-  username=""
-  password=""
-  while IFS=' ' read path label ; do
-    value="$(jq -re ".[0].$path" <<< "$1")"
-    if [ "$value" != "null" ]; then
-      actions+=("Copy ${label}:${label^} copied to clipboard:echo -n ${value@Q} | clipboard-set")
-      [ "$path" == "login.username" ] && username="$value"
-      [ "$path" == "login.password" ] && password="$value"
-    fi
-  done <<< "login.username username
-login.password password"
+  if username="$(jq -re ".[0].login.username" <<< "$1")"; then
+    actions+=("Copy username:Username copied to clipboard:echo -n ${username@Q} | clipboard-set")
+  fi
+  if password="$(jq -re ".[0].login.password" <<< "$1")"; then
+    actions+=("Copy password:Password copied to clipboard:echo -n ${password@Q} | clipboard-set")
+  fi
   if [ -n "$password" ] && [ -n "$username" ] ; then
     actions+=("Copy username and password:Username copied to primary selection<br>Password copied to clipboard: \
                     echo -n ${username@Q} | clipboard-set-primary \
                  && echo -n ${password@Q} | clipboard-set")
   fi
-  uri="$(jq -r 'map(.login.uris[0].uri | select(. != null)) | first' <<< "$1")"
-  if [ "$uri" != "null" ] ; then
+  if uri="$(jq -re 'map(.login.uris[0].uri | select(. != null)) | first' <<< "$1")" ; then
     actions+=("Open URI::xdg-open ${uri@Q}")
     if [ -n "$password" ] && [ -n "$username" ] ; then
       actions+=("Copy username and password, open URI:Username copied to primary selection<br>Password copied to clipboard: \

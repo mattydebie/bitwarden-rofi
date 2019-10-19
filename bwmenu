@@ -380,6 +380,10 @@ login.totp TOTP"
       actions+=("Copy password, open URI:Password copied to clipboard:echo -n ${password@Q} | clipboard-set && xdg-open ${uri@Q}")
     fi
   fi
+  declare -a "custom_field_actions=($(jq -re '.[0].fields | map("Copy " + .name + ":" + .name + " copied to clipboard:clipboard-set " + (.value | @sh)) | @sh' <<< "$1"))"
+  for action in "${custom_field_actions[@]}" ; do
+    actions+=("$action")
+  done
   if notes="$(jq -re '.[0].notes' <<< "$1")" ; then
     actions+=("Display notes::exit_error 0 ${notes@Q}")
   fi

@@ -148,3 +148,4 @@ Copyright © 2018-2019
   * Matthias De Bie
   * Remy Rojas
   * Baptiste Pierrat
+  * Nathan Wallace

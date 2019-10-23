@@ -17,11 +17,11 @@ ITEMS=
 AUTOTYPE_MODE=
 
 # Stores which command will be used to deal with clipboards
-CLIPBOARD_MODE=
+CLIPBOARD_MODE=wayland
 
 # Specify what happens when pressing Enter on an item.
 # Defaults to copy_password, can be changed to (auto_type all) or (auto_type password) or show_item_actions
-ENTER_CMD=copy_password
+ENTER_CMD=${ENTER_CMD:=copy_password}
 
 # Keyboard shortcuts
 KB_SYNC="Alt+r"
@@ -50,7 +50,7 @@ source "$DIR/lib-bwmenu"
 
 ask_password() {
   mpw=$(printf '' | rofi -dmenu -p "Master Password" -password -lines 0) || exit $?
-  echo "$mpw" | bw unlock 2>/dev/null | grep 'export' | sed -E 's/.*export BW_SESSION="(.*==)"$/\1/' || exit_error $? "Could not unlock vault"
+  echo "$mpw" | bw unlock 2>/dev/null | grep 'export' | sed -E 's/.*export BW_SESSION="(.*==)"$/\1/' || display_then_exit $? "Could not unlock vault"
 }
 
 get_session_key() {
@@ -60,7 +60,7 @@ get_session_key() {
   else
     if ! key_id=$(keyctl request user bw_session 2>/dev/null); then
       session=$(ask_password)
-      [[ -z "$session" ]] && exit_error 1 "Could not unlock vault"
+      [[ -z "$session" ]] && display_then_exit 1 "Could not unlock vault"
       key_id=$(echo "$session" | keyctl padd user bw_session @u)
     fi
     
@@ -75,11 +75,11 @@ get_session_key() {
 # Pre fetch all the items
 load_items() {
   if ! ITEMS=$(bw list items --session "$BW_HASH" 2>/dev/null); then
-    exit_error $? "Could not load items"
+    display_then_exit $? "Could not load items"
   fi
 }
 
-exit_error() {
+display_then_exit() {
   local code="$1"
   local message="$2"
 
@@ -189,7 +189,7 @@ show_folders() {
 
 # re-sync the BitWarden items with the server
 sync_bitwarden() {
-  bw sync --session "$BW_HASH" &>/dev/null || exit_error 1 "Failed to sync bitwarden"
+  bw sync --session "$BW_HASH" &>/dev/null || display_then_exit 1 "Failed to sync bitwarden"
 
   load_items
   show_items
@@ -266,8 +266,12 @@ select_copy_command() {
       CLIPBOARD_MODE=xclip
     elif hash xsel 2>/dev/null; then
       CLIPBOARD_MODE=xsel
+    elif hash wl-copy 2>/dev/null; then
+      CLIPBOARD_MODE=wayland
+    else
+      display_then_exit 1 "No clipboard command found. Please install either xclip, xsel, or wl-clipboard."
     fi
-    [ -z "$CLIPBOARD_MODE" ] && exit_error 1 "No clipboard command found. Please install either xclip, xsel, or wl-clipboard."
+    [ -z "$CLIPBOARD_MODE" ] && display_then_exit 1 "No clipboard command found. Please install either xclip, xsel, or wl-clipboard."
   fi
 }
 
@@ -413,8 +417,9 @@ actions_for_item() {
     actions+=("$action")
   done
   if notes="$(jq -re '.[0].notes' <<< "$1")" ; then
-    actions+=("Display notes::exit_error 0 ${notes@Q}")
+    actions+=("Display notes::display_then_exit 0 ${notes@Q}")
   fi
+  actions+=("Display everything::_show_everything ${1@Q}")
   printf '%s\n' "${actions[@]}"
 }
 
@@ -441,7 +446,7 @@ _copy_totp() {
   id=$(echo "$1" | jq -r ".[0].id")
 
   if ! totp=$(bw --session "$BW_HASH" get totp "$id"); then
-    exit_error 1 "$totp"
+    display_then_exit 1 "$totp"
   fi
 
   copy_and_clear clipboard "$totp"
@@ -481,7 +486,11 @@ copy_and_clear() {
       ) &
     fi
   fi
+}
 
+_show_everything() {
+  echo "EERTHANG: $1" >&2
+  display_then_exit 0 "$(jq -re '.[0] | reduce (tostream|select(length==2)) as $i ({}; .[[$i[0][]|tostring]|join(".")] = $i[1]) | with_entries( select( .value != null and .value != "" and .value != [] and .value != {} and .key != "type") ) | del(.revisionDate, .object, .id, .folderId, .type, .favorite)' <<< "$1")"
 }
 
 show_copy_notification() {
@@ -497,7 +506,7 @@ lock_vault() {
 parse_cli_arguments() {
   # Use GNU getopt to parse command line arguments
   if ! ARGUMENTS=$(getopt -o c:C --long auto-lock:,clear:,no-clear,show-password,state-path:,help,version -- "$@"); then
-    exit_error 1 "Failed to parse command-line arguments"
+    display_then_exit 1 "Failed to parse command-line arguments"
   fi
   eval set -- "$ARGUMENTS"
 
@@ -593,7 +602,7 @@ USAGE
         break
         ;;
       * )
-        exit_error 1 "Unknown option $1"
+        display_then_exit 1 "Unknown option $1"
     esac
   done
 }

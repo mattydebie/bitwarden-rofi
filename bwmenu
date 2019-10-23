@@ -283,8 +283,16 @@ clipboard-get() {
   clipboard-${CLIPBOARD_MODE}-get
 }
 
+clipboard-get-primary() {
+  clipboard-${CLIPBOARD_MODE}-get-primary
+}
+
 clipboard-clear() {
   clipboard-${CLIPBOARD_MODE}-clear
+}
+
+clipboard-clear-primary() {
+  clipboard-${CLIPBOARD_MODE}-clear-primary
 }
 
 clipboard-xclip-set() {
@@ -299,8 +307,16 @@ clipboard-xclip-get() {
     xclip -selection clipboard -o
 }
 
+clipboard-xclip-get-primary() {
+    xclip -selection primary -o
+}
+
 clipboard-xclip-clear() {
     echo -n "" | xclip -selection clipboard -r
+}
+
+clipboard-xclip-clear-primary() {
+    echo -n "" | xclip -selection primary -r
 }
 
 clipboard-xsel-set() {
@@ -315,8 +331,16 @@ clipboard-xsel-get() {
   xsel --clipboard
 }
 
+clipboard-xsel-get-primary() {
+  xsel --primary
+}
+
 clipboard-xsel-clear() {
   xsel --clipboard --delete
+}
+
+clipboard-xsel-clear-primary() {
+  xsel --primary --delete
 }
 
 clipboard-wayland-set() {
@@ -331,8 +355,16 @@ clipboard-wayland-get() {
   wl-paste
 }
 
+clipboard-wayland-get-primary() {
+  wl-paste --primary
+}
+
 clipboard-wayland-clear() {
   wl-copy --clear
+}
+
+clipboard-wayland-clear-primary() {
+  wl-copy --clear --primary
 }
 
 show_item_actions() {
@@ -352,31 +384,31 @@ show_item_actions() {
 actions_for_item() {
   actions=()
   if username="$(jq -re ".[0].login.username" <<< "$1")"; then
-    actions+=("Copy username:Username copied to clipboard:echo -n ${username@Q} | clipboard-set")
+    actions+=("Copy username:Username copied to clipboard:copy_and_clear clipboard ${username@Q}")
   fi
   if password="$(jq -re ".[0].login.password" <<< "$1")"; then
-    actions+=("Copy password:Password copied to clipboard:echo -n ${password@Q} | clipboard-set")
+    actions+=("Copy password:Password copied to clipboard:copy_and_clear clipboard ${password@Q}")
   fi
   if [ -n "$password" ] && [ -n "$username" ] ; then
     actions+=("Copy username and password:Username copied to primary selection<br>Password copied to clipboard: \
-                    echo -n ${username@Q} | clipboard-set-primary \
-                 && echo -n ${password@Q} | clipboard-set")
+                    copy_and_clear primary ${username@Q} \
+                 && copy_and_clear clipboard ${password@Q}")
   fi
   if uri="$(jq -re 'map(.login.uris[0].uri | select(. != null)) | first' <<< "$1")" ; then
     actions+=("Open URI::xdg-open ${uri@Q}")
     if [ -n "$password" ] && [ -n "$username" ] ; then
-      actions+=("Copy username and password, open URI:Username copied to primary selection<br>Password copied to clipboard: \
-                    echo -n ${username@Q} | clipboard-set-primary \
-                 && echo -n ${password@Q} | clipboard-set \
+      actions+=("Copy username and password, open URI:Username copied to clipboard<br>Password copied to primary selection: \
+                    copy_and_clear clipboard ${username@Q} \
+                 && copy_and_clear primary ${password@Q} \
                  && xdg-open ${uri@Q}")
     elif [ -n "$password" ] ; then
-      actions+=("Copy password, open URI:Password copied to clipboard:echo -n ${password@Q} | clipboard-set && xdg-open ${uri@Q}")
+      actions+=("Copy password, open URI:Password copied to clipboard:copy_and_clear ${password@Q} && xdg-open ${uri@Q}")
     fi
   fi
   if jq -e '.[0].login.totp' > /dev/null <<< "$1" ; then
     actions+=("Copy TOTP:TOTP copied to clipboard:_copy_totp ${1@Q}")
   fi
-  declare -a "custom_field_actions=($(jq -re '.[0].fields | map("Copy " + .name + ":" + .name + " copied to clipboard:clipboard-set " + (.value | @sh)) | @sh' <<< "$1"))"
+  declare -a "custom_field_actions=($(jq -re '.[0].fields | map("Copy " + .name + ":" + .name + " copied to clipboard:copy_and_clear " + (.value | @sh)) | @sh' <<< "$1"))"
   for action in "${custom_field_actions[@]}" ; do
     actions+=("$action")
   done
@@ -401,14 +433,7 @@ copy_password() {
     pass="$(echo "$1" | jq -r '.[0].login.password')"
 
     show_copy_notification "$(echo "$1" | jq -r '.[0]')"
-    echo -n "$pass" | clipboard-set
-
-    if [[ $CLEAR -gt 0 ]]; then
-      sleep "$CLEAR"
-      if [[ "$(clipboard-get)" == "$pass" ]]; then
-        clipboard-clear
-      fi
-    fi
+    copy_and_clear clipboard "$pass"
   fi
 }
 
@@ -419,7 +444,7 @@ _copy_totp() {
     exit_error 1 "$totp"
   fi
 
-  echo -n "$totp" | clipboard-set
+  copy_and_clear clipboard "$totp"
 }
 
 # Copy the TOTP
@@ -432,6 +457,31 @@ copy_totp() {
     _copy_totp "$1"
     notify-send "TOTP Copied"
   fi
+}
+
+copy_and_clear() {
+  if [ "$1" = "primary" ]; then
+    clipboard-set-primary <<< "$2"
+    if [[ $CLEAR -gt 0 ]]; then
+      (
+        sleep "$CLEAR"
+        if [[ "$(clipboard-get-primary)" == "$2" ]]; then
+          clipboard-clear-primary
+        fi
+      ) &
+    fi
+  else
+    clipboard-set <<< "$2"
+    if [[ $CLEAR -gt 0 ]]; then
+      (
+        sleep "$CLEAR"
+        if [[ "$(clipboard-get)" == "$2" ]]; then
+          clipboard-clear
+        fi
+      ) &
+    fi
+  fi
+
 }
 
 show_copy_notification() {

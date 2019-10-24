@@ -63,7 +63,7 @@ get_session_key() {
       [[ -z "$session" ]] && display_then_exit 1 "Could not unlock vault"
       key_id=$(echo "$session" | keyctl padd user bw_session @u)
     fi
-    
+
     if [ $AUTO_LOCK -gt 0 ]; then
       keyctl timeout "$key_id" $AUTO_LOCK
     fi
@@ -489,8 +489,19 @@ copy_and_clear() {
 }
 
 _show_everything() {
-  echo "EERTHANG: $1" >&2
-  display_then_exit 0 "$(jq -re '.[0] | reduce (tostream|select(length==2)) as $i ({}; .[[$i[0][]|tostring]|join(".")] = $i[1]) | with_entries( select( .value != null and .value != "" and .value != [] and .value != {} and .key != "type") ) | del(.revisionDate, .object, .id, .folderId, .type, .favorite)' <<< "$1")"
+  display_then_exit 0 "$(
+    jq -re '.[0] |
+      .URIs = (.login.uris | map(.uri)) |
+      .Username = .login.username |
+      .Password = .login.password |
+      reduce .fields[] as $field (.; .[$field.name] = $field.value) |
+      del(.id, .folderId, .object, .revisionDate, .type, .favorite, .login, .fields) |
+      reduce (tostream | select(length==2)) as $i ({}; .[[$i[0][] | tostring] | join(" ")] = $i[1]) |
+      to_entries |
+      map(if (.value | length) > 0 then .key + ": " + .value else empty end) |
+      join("\n")
+    ' <<< "$1"
+  )"
 }
 
 show_copy_notification() {
@@ -556,7 +567,7 @@ Quick Actions:
   $KB_TYPEALL  Autotype the username and password [needs xdotool or ydotool]
   $KB_TYPEUSER  Autotype the username [needs xdotool or ydotool]
   $KB_TYPEPASS  Autotype the password [needs xdotool or ydotool]
-  
+
   $KB_LOCK  Lock your vault
 
 Examples:

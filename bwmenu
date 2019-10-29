@@ -253,7 +253,7 @@ type_word() {
 }
 
 type_tab() {
-  "${AUTOTYPE_MODE[@]}" key tab
+  "${AUTOTYPE_MODE[@]}" key Tab
 }
 
 

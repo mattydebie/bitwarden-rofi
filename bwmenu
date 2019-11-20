@@ -146,7 +146,8 @@ format_logins() {
       if [[ -z ${logins[$name]} ]]; then
         count["$name"]=1
       else
-        count["$name"]+=1
+        current=${count["$name"]}
+        count["$name"]=$((current + 1))
       fi
     done <<< "$names"
 

@@ -8,6 +8,7 @@ BW_HASH=
 # Options
 CLEAR=$DEFAULT_CLEAR # Clear password after N seconds (0 to disable)
 SHOW_PASSWORD=no # Show part of the password in the notification
+HIDE_KEYBINDS=no # Show help text containing keybinds
 AUTO_LOCK=900 # 15 minutes, default for bitwarden apps
 
 # Holds the available items in memory
@@ -112,11 +113,18 @@ rofi_menu() {
 <b>$KB_TYPEALL</b>: Type all  | <b>$KB_TYPEUSER</b>: Type user | <b>$KB_TYPEPASS</b>: Type pass"
   }
 
-  rofi -dmenu -p 'Name' \
-    -i -no-custom \
-    -mesg "$msg" \
-    "${actions[@]}" \
-    "${ROFI_OPTIONS[@]}"
+  if [[ "no" == $HIDE_KEYBINDS ]]; then
+    rofi -dmenu -p 'Name' \
+      -i -no-custom \
+      -mesg "$msg" \
+      "${actions[@]}" \
+      "${ROFI_OPTIONS[@]}"
+  else
+    rofi -dmenu -p 'Name' \
+      -i -no-custom \
+      "${actions[@]}" \
+      "${ROFI_OPTIONS[@]}"
+  fi
 }
 
 # Show items in a rofi menu by name of the item
@@ -389,7 +397,7 @@ show_copy_notification() {
 
 parse_cli_arguments() {
   # Use GNU getopt to parse command line arguments
-  if ! ARGUMENTS=$(getopt -o c:C --long auto-lock:,clear:,no-clear,show-password,state-path:,help,version -- "$@"); then
+  if ! ARGUMENTS=$(getopt -o c:C --long auto-lock:,clear:,no-clear,show-password,hide-keybinds,state-path:,help,version -- "$@"); then
     exit_error 1 "Failed to parse command-line arguments"
   fi
   eval set -- "$ARGUMENTS"
@@ -426,6 +434,9 @@ Options:
 
   --show-password
       Show the first 4 characters of the copied password in the notification.
+
+  --hide-keybinds
+      Hide help text containing keybinds.
 
 Quick Actions:
   When hovering over an item in the rofi menu, you can make use of Quick Actions.
@@ -478,6 +489,10 @@ USAGE
         ;;
       --show-password )
         SHOW_PASSWORD=yes
+        shift
+        ;;
+      --hide-keybinds )
+        HIDE_KEYBINDS=yes
         shift
         ;;
       -- )

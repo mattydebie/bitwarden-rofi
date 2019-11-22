@@ -111,6 +111,7 @@ For copying or autotyping, install:
 
 Install these **required** dependencies:
 
+- rofi
 - bitwarden-cli
 - jq
 

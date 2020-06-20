@@ -178,13 +178,13 @@ show_folders() {
   folders=$(bw list folders --session "$BW_HASH")
   if folder=$(echo "$folders" | jq -r '.[] | .name' | rofi_menu); then
 
-    folder_id=$(echo "$folders" | jq -r ".[] | select(.name == \"$folder\").id")
+    folder_id=$(echo "$folders" | jq -r ".[] | select(.name == $(jq_escape "$folder")).id")
 
     ITEMS=$(bw list items --folderid "$folder_id" --session "$BW_HASH")
     show_items
   else
     rofi_exit_code="$?"
-    folder_id=$(echo "$folders" | jq -r ".[] | select(.name == \"$folder\").id")
+    folder_id=$(echo "$folders" | jq -r ".[] | select(.name == $(jq_escape "$folder")).id")
     item_array=$(bw list items --folderid "$folder_id" --session "$BW_HASH")
     on_rofi_exit "$rofi_exit_code" "$item_array"
   fi

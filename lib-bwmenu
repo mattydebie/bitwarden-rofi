@@ -1,17 +1,23 @@
 #!/bin/bash
 # Helper functions
 
+# Escape the argument into a valid jq string literal (with quotes included)
+# $1: string to escape
+jq_escape() {
+	echo -n "$1" | jq -Rs
+}
+
 # Extract item or items matching .name, including deduplication
 # $1: item name, prepended or not with deduplication mark
 array_from_name() {
-  item_name="$(echo "$1" | sed "s/$DEDUP_MARK //")"
-  echo "$ITEMS" | jq -r ". | map(select((.name == \"$item_name\") and (.type == $TYPE_LOGIN)))"
+  item_name=$(jq_escape "${1#$DEDUP_MARK }")
+  echo "$ITEMS" | jq -r "map(select((.name == $item_name) and (.type == $TYPE_LOGIN)))"
 }
 
 # Extract item matching .id
 # $1: string starting with ".id:"
 array_from_id() {
-  echo "$ITEMS" | jq -r ". | map(select(.id == \"$1\"))"
+  echo "$ITEMS" | jq -r ". | map(select(.id == $(jq_escape $1)))"
 }
 
 # Count the number of items in an array. Return true if more than 1 or none

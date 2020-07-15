@@ -49,7 +49,7 @@ DIR="$(dirname "$(readlink -f "$0")")"
 source "$DIR/lib-bwmenu"
 
 ask_password() {
-  mpw=$(printf '' | rofi -dmenu -p "Master Password" -password -l 0) || exit $?
+  mpw=$(printf '' | rofi -dmenu -p "Master Password" -password -l 0 ${ROFI_OPTIONS[@]}) || exit $?
   echo "$mpw" | bw unlock 2>/dev/null | grep 'export' | sed -E 's/.*export BW_SESSION="(.*==)"$/\1/' || exit_error $? "Could not unlock vault"
 }
 

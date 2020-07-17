@@ -82,8 +82,9 @@ load_items() {
 exit_error() {
   local code="$1"
   local message="$2"
-
-  rofi -e "$message"
+  if [ $message ]; then
+    rofi -e "$message"
+  fi
   exit "$code"
 }
 
@@ -225,6 +226,7 @@ auto_type() {
         type_word "$(echo "$2" | jq -r '.[0].login.username')"
         type_tab
         type_word "$(echo "$2" | jq -r '.[0].login.password')"
+        copy_totp "$2"
         ;;
       username)
         type_word "$(echo "$2" | jq -r '.[0].login.username')"

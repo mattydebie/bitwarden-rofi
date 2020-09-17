@@ -114,7 +114,7 @@ rofi_menu() {
       -kb-custom-10 $KB_TYPETOTP
     )
     msg+="
-<b>$KB_TYPEALL</b>: Type all  | <b>$KB_TYPEUSER</b>: Type user | <b>$KB_TYPEPASS</b>: Type pass | <b>$KB_TYPETOTP</b>: Type TOTP"
+<b>$KB_TYPEALL</b>: Type all  | <b>$KB_TYPEUSER</b>: Type user | <b>$KB_TYPEPASS</b>: Type pass | <b>$KB_TYPETOTP</b>: Type totp"
   }
 
   rofi -dmenu -p 'Name' \

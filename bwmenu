@@ -356,7 +356,7 @@ get_totp() {
   else
     id=$(echo "$1" | jq -r ".[0].id")
 
-    if ! totp=$(bw --session "$BW_HASH" get totp "$id"); then
+    if ! totp=$(bw --session "$BW_HASH" get totp "$id" 2>&1); then
       exit_error 1 "$totp"
     fi
     echo -n "$totp"

@@ -33,6 +33,7 @@ KB_LOCK="Alt+L"
 KB_TYPEALL="Alt+1"
 KB_TYPEUSER="Alt+2"
 KB_TYPEPASS="Alt+3"
+KB_TYPETOTP="Alt+4"
 
 # Item type classification
 TYPE_LOGIN=1
@@ -65,7 +66,7 @@ get_session_key() {
       session=$(ask_password) || exit $?
       key_id=$(echo "$session" | keyctl padd user bw_session @u)
     fi
-    
+
     if [ $AUTO_LOCK -gt 0 ]; then
       keyctl timeout "$key_id" $AUTO_LOCK
     fi
@@ -110,9 +111,10 @@ rofi_menu() {
       -kb-custom-5 $KB_TYPEALL
       -kb-custom-6 $KB_TYPEUSER
       -kb-custom-7 $KB_TYPEPASS
+      -kb-custom-10 $KB_TYPETOTP
     )
     msg+="
-<b>$KB_TYPEALL</b>: Type all  | <b>$KB_TYPEUSER</b>: Type user | <b>$KB_TYPEPASS</b>: Type pass"
+<b>$KB_TYPEALL</b>: Type all  | <b>$KB_TYPEUSER</b>: Type user | <b>$KB_TYPEPASS</b>: Type pass | <b>$KB_TYPETOTP</b>: Type TOTP"
   }
 
   rofi -dmenu -p 'Name' \
@@ -212,6 +214,7 @@ on_rofi_exit() {
     14) auto_type all "$2";;
     15) auto_type username "$2";;
     16) auto_type password "$2";;
+    19) auto_type totp "$2";;
     *) exit "$1";;
   esac
 }
@@ -236,6 +239,9 @@ auto_type() {
         ;;
       password)
         type_word "$(echo "$2" | jq -r '.[0].login.password')"
+        ;;
+      totp)
+        type_word "$(get_totp "$2")"
         ;;
     esac
   fi
@@ -346,9 +352,9 @@ copy_password() {
   fi
 }
 
-# Copy the TOTP
+# Get the TOTP
 # $1: item array
-copy_totp() {
+get_totp() {
   if not_unique "$1"; then
     ITEMS="$item_array"
     show_full_items
@@ -358,8 +364,18 @@ copy_totp() {
     if ! totp=$(bw --session "$BW_HASH" get totp "$id"); then
       exit_error 1 "$totp"
     fi
+    echo -n "$totp"
+  fi
+}
 
-    echo -n "$totp" | clipboard-set
+# Copy the TOTP
+# $1: item array
+copy_totp() {
+  if not_unique "$1"; then
+    ITEMS="$item_array"
+    show_full_items
+  else
+    get_totp "$1" | clipboard-set
     notify-send "TOTP Copied"
   fi
 }
@@ -445,7 +461,8 @@ Quick Actions:
   $KB_TYPEALL  Autotype the username and password [needs xdotool or ydotool]
   $KB_TYPEUSER  Autotype the username [needs xdotool or ydotool]
   $KB_TYPEPASS  Autotype the password [needs xdotool or ydotool]
-  
+  $KB_TYPETOTP  Autotype the TOTP [needs xdotool or ydotool]
+
   $KB_LOCK  Lock your vault
 
 Examples:

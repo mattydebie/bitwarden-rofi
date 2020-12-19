@@ -12,6 +12,7 @@ AUTO_LOCK=900 # 15 minutes, default for bitwarden apps
 
 # Holds the available items in memory
 ITEMS=
+CACHE_FILE=$HOME/.cache/bwmenu/logins.gpg
 
 # Stores which command will be used to emulate keyboard type
 AUTOTYPE_MODE=
@@ -50,6 +51,7 @@ DIR="$(dirname "$(readlink -f "$0")")"
 source "$DIR/lib-bwmenu"
 
 ask_password() {
+  rm $CACHE_FILE
   mpw=$(printf '' | rofi -dmenu -p "Master Password" -password -l 0 ${ROFI_OPTIONS[@]}) || exit $?
   if ! out="$(bw --raw --nointeraction unlock "$mpw" 2>&1)"; then
     exit_error 1 "Could not unlock vault: $out"
@@ -74,6 +76,15 @@ get_session_key() {
   fi
 }
 
+# Load encrypted passwords from cache if exists
+load_cache() {
+  if [ -f "$CACHE_FILE" ]; then
+    ITEMS=$(gpg --quiet -d --batch --passphrase $BW_HASH $CACHE_FILE)
+  else
+    load_items
+  fi
+}
+
 # source the hash file to gain access to the BitWarden CLI
 # Pre fetch all the items
 load_items() {
@@ -81,6 +92,10 @@ load_items() {
     keyctl purge user bw_session &>/dev/null
     exit_error $? "Could not load items: $ITEMS"
   fi
+
+  # create dir for cache and encrypt $ITEMS
+  mkdir -p $(dirname $CACHE_FILE)
+  echo "$ITEMS" | gpg -c --batch --passphrase $BW_HASH -o $CACHE_FILE
 }
 
 exit_error() {
@@ -198,6 +213,7 @@ sync_bitwarden() {
     exit_error 1 "Failed to sync bitwarden: $error"
   fi
 
+  rm $CACHE_FILE
   load_items
   show_items
 }
@@ -518,5 +534,5 @@ parse_cli_arguments "$@"
 get_session_key
 select_autotype_command
 select_copy_command
-load_items
+load_cache
 show_items

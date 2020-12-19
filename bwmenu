@@ -12,7 +12,7 @@ AUTO_LOCK=900 # 15 minutes, default for bitwarden apps
 
 # Holds the available items in memory
 ITEMS=
-CACHE_FILE=$HOME/.cache/bwmenu/logins.gpg
+CACHE_FILE=/tmp/bwmenu/logins.gpg
 
 # Stores which command will be used to emulate keyboard type
 AUTOTYPE_MODE=
@@ -79,7 +79,7 @@ get_session_key() {
 # Load encrypted passwords from cache if exists
 load_cache() {
   if [ -f "$CACHE_FILE" ]; then
-    ITEMS=$(gpg --quiet -d --batch --passphrase $BW_HASH $CACHE_FILE)
+    ITEMS=$(gpg --quiet -d --batch --passphrase $BW_HASH --cipher-algo AES256 $CACHE_FILE)
   else
     load_items
   fi
@@ -95,7 +95,7 @@ load_items() {
 
   # create dir for cache and encrypt $ITEMS
   mkdir -p $(dirname $CACHE_FILE)
-  echo "$ITEMS" | gpg -c --batch --passphrase $BW_HASH -o $CACHE_FILE
+  echo "$ITEMS" | gpg -c --batch --passphrase $BW_HASH --cipher-algo AES256 -o $CACHE_FILE
 }
 
 exit_error() {
@@ -141,6 +141,7 @@ rofi_menu() {
 
 # Show items in a rofi menu by name of the item
 show_items() {
+	echo "$BW_HASH"
   if item=$(
     echo "$ITEMS" \
     | jq -r ".[] | select( has( \"login\" ) ) | \"\\(.name)\"" \

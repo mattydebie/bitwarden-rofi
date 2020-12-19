@@ -141,7 +141,6 @@ rofi_menu() {
 
 # Show items in a rofi menu by name of the item
 show_items() {
-	echo "$BW_HASH"
   if item=$(
     echo "$ITEMS" \
     | jq -r ".[] | select( has( \"login\" ) ) | \"\\(.name)\"" \

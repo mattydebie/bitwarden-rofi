@@ -121,7 +121,7 @@ Install these **required** dependencies:
 - xclip, xsel, or wl-clipboard
 - xdotool or ydotool
 
-Then download the script files and place it somewhere on your `$PATH` and grant it
+Then download the script files and place them somewhere on your `$PATH` and grant them
 the `+x` permission.
 
 ```bash

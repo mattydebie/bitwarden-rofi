@@ -121,17 +121,20 @@ Install these **required** dependencies:
 - xclip, xsel, or wl-clipboard
 - xdotool or ydotool
 
-Then download the script file and place it somewhere on your `$PATH` and grant it
+Then download the script files and place it somewhere on your `$PATH` and grant it
 the `+x` permission.
 
 ```bash
 # Install for all users
-sudo install -D --mode=755 --group=root --owner=root bwmenu /usr/local/bin/bwmenu
+sudo install -D --mode=755 --group=root --owner=root bwmenu /usr/local/bin/bwmenu && \
+  sudo install -D --mode=755 --group=root --owner=root lib-bwmenu /usr/local/bin/lib-bwmenu
 
 # Install for yourself
 mkdir -p ~/.local/bin && \
   cp bwmenu ~/.local/bin/bwmenu && \
-  chmod +x ~/.local/bin/bwmenu
+  chmod +x ~/.local/bin/bwmenu && \
+  cp lib-bwmenu ~/.local/bin/lib-bwmenu && \
+  chmod +x ~/.local/bin/lib-bwmenu
 ```
 
 ## Hall of Fame

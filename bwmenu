@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Rofi extension for BitWarden-cli
 NAME="$(basename "$0")"
 VERSION="0.4"

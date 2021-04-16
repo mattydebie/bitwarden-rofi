@@ -50,7 +50,10 @@ source "$DIR/lib-bwmenu"
 
 ask_password() {
   mpw=$(printf '' | rofi -dmenu -p "Master Password" -password -lines 0) || exit $?
-  echo "$mpw" | bw unlock 2>/dev/null | grep 'export' | sed -E 's/.*export BW_SESSION="(.*==)"$/\1/' || exit_error $? "Could not unlock vault"
+  if ! out="$(bw --raw --nointeraction unlock "$mpw" 2>&1)"; then
+    exit_error 1 "Could not unlock vault: $out"
+  fi
+  echo "$out"
 }
 
 get_session_key() {
@@ -59,8 +62,7 @@ get_session_key() {
     BW_HASH=$(ask_password)
   else
     if ! key_id=$(keyctl request user bw_session 2>/dev/null); then
-      session=$(ask_password)
-      [[ -z "$session" ]] && exit_error 1 "Could not unlock vault"
+      session=$(ask_password) || exit $?
       key_id=$(echo "$session" | keyctl padd user bw_session @u)
     fi
     
@@ -74,8 +76,9 @@ get_session_key() {
 # source the hash file to gain access to the BitWarden CLI
 # Pre fetch all the items
 load_items() {
-  if ! ITEMS=$(bw list items --session "$BW_HASH" 2>/dev/null); then
-    exit_error $? "Could not load items"
+  if ! ITEMS=$(bw --nointeraction list items --session "$BW_HASH" 2>/dev/null); then
+    keyctl purge user bw_session &>/dev/null
+    exit_error $? "Could not load items: $ITEMS"
   fi
 }
 
@@ -189,7 +192,9 @@ show_folders() {
 
 # re-sync the BitWarden items with the server
 sync_bitwarden() {
-  bw sync --session "$BW_HASH" &>/dev/null || exit_error 1 "Failed to sync bitwarden"
+  if ! error="$(bw --nointeraction sync --session "$BW_HASH" 2>/dev/null)"; then
+    exit_error 1 "Failed to sync bitwarden: $error"
+  fi
 
   load_items
   show_items

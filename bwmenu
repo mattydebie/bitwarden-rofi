@@ -407,9 +407,9 @@ actions_for_item() {
     [ -n "$AUTOTYPE_MODE" ] && actions+=("Type password::auto_type password ${1@Q}")
   fi
   if [ -n "$password" ] && [ -n "$username" ] ; then
-    actions+=("Copy username and password:Username copied to primary selection<br>Password copied to clipboard: \
-                    copy_and_clear primary ${username@Q} \
-                 && copy_and_clear clipboard ${password@Q}")
+    actions+=("Copy username and password:Username copied to clipboard<br>Password copied to primary selection: \
+                    copy_and_clear clipboard ${username@Q} \
+                 && copy_and_clear primary ${password@Q}")
     [ -n "$AUTOTYPE_MODE" ] && actions+=("Type username and password::auto_type all ${1@Q}")
   fi
   if uri="$(jq -re 'map(.login.uris[0].uri | select(. != null)) | first' <<< "$1")" ; then

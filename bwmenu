@@ -48,26 +48,37 @@ DEDUP_MARK="(+)"
 DIR="$(dirname "$(readlink -f "$0")")"
 source "$DIR/lib-bwmenu"
 
+ask_login() {
+  email=$(rofi -dmenu -p "User Email" -lines 0) || exit $?
+  mpw=$(rofi -dmenu -p "Master Password" -password -lines 0) || exit $?
+  echo "$mpw" | bw login "$email" 2>/dev/null | grep 'export' | sed -E 's/.*export BW_SESSION="(.*==)"$/\1/' || display_then_exit $? "Could not log in"
+}
+
 ask_password() {
   mpw=$(printf '' | rofi -dmenu -p "Master Password" -password -lines 0) || exit $?
   echo "$mpw" | bw unlock 2>/dev/null | grep 'export' | sed -E 's/.*export BW_SESSION="(.*==)"$/\1/' || display_then_exit $? "Could not unlock vault"
 }
 
 get_session_key() {
-  if [ $AUTO_LOCK -eq 0 ]; then
+  if [[ $AUTO_LOCK -eq 0 ]]; then
     keyctl purge user bw_session &>/dev/null
-    BW_HASH=$(ask_password)
-  else
-    if ! key_id=$(keyctl request user bw_session 2>/dev/null); then
-      session=$(ask_password)
-      [[ -z "$session" ]] && display_then_exit 1 "Could not unlock vault"
-      key_id=$(echo "$session" | keyctl padd user bw_session @u)
-    fi
+  fi
 
-    if [ $AUTO_LOCK -gt 0 ]; then
+  if key_id=$(keyctl request user bw_session 2>/dev/null); then
+    BW_HASH=$(keyctl pipe "$key_id")
+  elif [[ "$(bw status | jq '.userEmail')" == null ]]; then
+    BW_HASH=$(ask_login)
+  else
+    BW_HASH=$(ask_password)
+  fi
+
+  [[ -z "$BW_HASH" ]] && display_then_exit 1 "Could not unlock vault"
+
+  if [[ $AUTO_LOCK -ne 0 ]]; then
+    key_id=$(echo "$BW_HASH" | keyctl padd user bw_session @u)
+    if [[ $AUTO_LOCK -gt 0 ]]; then
       keyctl timeout "$key_id" $AUTO_LOCK
     fi
-    BW_HASH=$(keyctl pipe "$key_id")
   fi
 }
 

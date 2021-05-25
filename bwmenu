@@ -249,7 +249,10 @@ select_autotype_command() {
 }
 
 type_word() {
+  DEFAULT_LAYOUT="$(setxkbamp -query | grep layout | awk '{print $2}')"
+  setxkbamp us
   "${AUTOTYPE_MODE[@]}" type "$1"
+  setxkbamp ${DEFAULT_LAYOUT}
 }
 
 type_tab() {

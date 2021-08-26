@@ -17,11 +17,11 @@ ITEMS=
 AUTOTYPE_MODE=
 
 # Stores which command will be used to deal with clipboards
-CLIPBOARD_MODE=
+CLIPBOARD_MODE=wayland
 
 # Specify what happens when pressing Enter on an item.
-# Defaults to copy_password, can be changed to (auto_type all) or (auto_type password)
-ENTER_CMD=copy_password
+# Defaults to copy_password, can be changed to (auto_type all) or (auto_type password) or show_item_actions
+ENTER_CMD=${ENTER_CMD:=copy_password}
 
 # Keyboard shortcuts
 KB_SYNC="Alt+r"
@@ -48,26 +48,37 @@ DEDUP_MARK="(+)"
 DIR="$(dirname "$(readlink -f "$0")")"
 source "$DIR/lib-bwmenu"
 
+ask_login() {
+  email=$(rofi -dmenu -p "User Email" -lines 0) || exit $?
+  mpw=$(rofi -dmenu -p "Master Password" -password -lines 0) || exit $?
+  echo "$mpw" | bw login "$email" 2>/dev/null | grep 'export' | sed -E 's/.*export BW_SESSION="(.*==)"$/\1/' || display_then_exit $? "Could not log in"
+}
+
 ask_password() {
   mpw=$(printf '' | rofi -dmenu -p "Master Password" -password -lines 0) || exit $?
-  echo "$mpw" | bw unlock 2>/dev/null | grep 'export' | sed -E 's/.*export BW_SESSION="(.*==)"$/\1/' || exit_error $? "Could not unlock vault"
+  echo "$mpw" | bw unlock 2>/dev/null | grep 'export' | sed -E 's/.*export BW_SESSION="(.*==)"$/\1/' || display_then_exit $? "Could not unlock vault"
 }
 
 get_session_key() {
-  if [ $AUTO_LOCK -eq 0 ]; then
+  if [[ $AUTO_LOCK -eq 0 ]]; then
     keyctl purge user bw_session &>/dev/null
-    BW_HASH=$(ask_password)
+  fi
+
+  if key_id=$(keyctl request user bw_session 2>/dev/null); then
+    BW_HASH=$(keyctl pipe "$key_id")
+  elif [[ "$(bw status | jq '.userEmail')" == null ]]; then
+    BW_HASH=$(ask_login)
   else
-    if ! key_id=$(keyctl request user bw_session 2>/dev/null); then
-      session=$(ask_password)
-      [[ -z "$session" ]] && exit_error 1 "Could not unlock vault"
-      key_id=$(echo "$session" | keyctl padd user bw_session @u)
-    fi
-    
-    if [ $AUTO_LOCK -gt 0 ]; then
+    BW_HASH=$(ask_password)
+  fi
+
+  [[ -z "$BW_HASH" ]] && display_then_exit 1 "Could not unlock vault"
+
+  if [[ $AUTO_LOCK -ne 0 ]]; then
+    key_id=$(echo "$BW_HASH" | keyctl padd user bw_session @u)
+    if [[ $AUTO_LOCK -gt 0 ]]; then
       keyctl timeout "$key_id" $AUTO_LOCK
     fi
-    BW_HASH=$(keyctl pipe "$key_id")
   fi
 }
 
@@ -75,11 +86,11 @@ get_session_key() {
 # Pre fetch all the items
 load_items() {
   if ! ITEMS=$(bw list items --session "$BW_HASH" 2>/dev/null); then
-    exit_error $? "Could not load items"
+    display_then_exit $? "Could not load items"
   fi
 }
 
-exit_error() {
+display_then_exit() {
   local code="$1"
   local message="$2"
 
@@ -189,7 +200,7 @@ show_folders() {
 
 # re-sync the BitWarden items with the server
 sync_bitwarden() {
-  bw sync --session "$BW_HASH" &>/dev/null || exit_error 1 "Failed to sync bitwarden"
+  bw sync --session "$BW_HASH" &>/dev/null || display_then_exit 1 "Failed to sync bitwarden"
 
   load_items
   show_items
@@ -266,8 +277,12 @@ select_copy_command() {
       CLIPBOARD_MODE=xclip
     elif hash xsel 2>/dev/null; then
       CLIPBOARD_MODE=xsel
+    elif hash wl-copy 2>/dev/null; then
+      CLIPBOARD_MODE=wayland
+    else
+      display_then_exit 1 "No clipboard command found. Please install either xclip, xsel, or wl-clipboard."
     fi
-    [ -z "$CLIPBOARD_MODE" ] && exit_error 1 "No clipboard command found. Please install either xclip, xsel, or wl-clipboard."
+    [ -z "$CLIPBOARD_MODE" ] && display_then_exit 1 "No clipboard command found. Please install either xclip, xsel, or wl-clipboard."
   fi
 }
 
@@ -275,48 +290,155 @@ clipboard-set() {
   clipboard-${CLIPBOARD_MODE}-set
 }
 
+clipboard-set-primary() {
+  clipboard-${CLIPBOARD_MODE}-set-primary
+}
+
 clipboard-get() {
   clipboard-${CLIPBOARD_MODE}-get
+}
+
+clipboard-get-primary() {
+  clipboard-${CLIPBOARD_MODE}-get-primary
 }
 
 clipboard-clear() {
   clipboard-${CLIPBOARD_MODE}-clear
 }
 
+clipboard-clear-primary() {
+  clipboard-${CLIPBOARD_MODE}-clear-primary
+}
+
 clipboard-xclip-set() {
     xclip -selection clipboard -r
+}
+
+clipboard-xclip-set-primary() {
+    xclip -selection primary -r
 }
 
 clipboard-xclip-get() {
     xclip -selection clipboard -o
 }
 
+clipboard-xclip-get-primary() {
+    xclip -selection primary -o
+}
+
 clipboard-xclip-clear() {
     echo -n "" | xclip -selection clipboard -r
+}
+
+clipboard-xclip-clear-primary() {
+    echo -n "" | xclip -selection primary -r
 }
 
 clipboard-xsel-set() {
   xsel --clipboard --input
 }
 
+clipboard-xsel-set-primary() {
+  xsel --clipboard --input --primary
+}
+
 clipboard-xsel-get() {
   xsel --clipboard
+}
+
+clipboard-xsel-get-primary() {
+  xsel --primary
 }
 
 clipboard-xsel-clear() {
   xsel --clipboard --delete
 }
 
+clipboard-xsel-clear-primary() {
+  xsel --primary --delete
+}
+
 clipboard-wayland-set() {
   wl-copy
+}
+
+clipboard-wayland-set-primary() {
+  wl-copy --primary
 }
 
 clipboard-wayland-get() {
   wl-paste
 }
 
+clipboard-wayland-get-primary() {
+  wl-paste --primary
+}
+
 clipboard-wayland-clear() {
   wl-copy --clear
+}
+
+clipboard-wayland-clear-primary() {
+  wl-copy --clear --primary
+}
+
+show_item_actions() {
+  if not_unique "$1"; then
+    ITEMS="$1"
+    show_full_items
+  else
+    actions="$(actions_for_item "$1")"
+    if selection="$(cut -d : -f 1 <<< "$actions" | select_action)"; then
+      selected_action="$(sed "$(( $selection + 1 ))q;d" <<< "$actions")"
+      eval "$(cut -d : -f 3- <<< "$selected_action")"
+      show_copy_notification "$(cut -d : -f 2 <<< "$selected_action")"
+    fi
+  fi
+}
+
+actions_for_item() {
+  actions=()
+  if username="$(jq -re ".[0].login.username" <<< "$1")"; then
+    actions+=("Copy username:Username copied to clipboard:copy_and_clear clipboard ${username@Q}")
+    [ -n "$AUTOTYPE_MODE" ] && actions+=("Type username::auto_type username ${1@Q}")
+  fi
+  if password="$(jq -re ".[0].login.password" <<< "$1")"; then
+    actions+=("Copy password:Password copied to clipboard:copy_and_clear clipboard ${password@Q}")
+    [ -n "$AUTOTYPE_MODE" ] && actions+=("Type password::auto_type password ${1@Q}")
+  fi
+  if [ -n "$password" ] && [ -n "$username" ] ; then
+    actions+=("Copy username and password:Username copied to clipboard<br>Password copied to primary selection: \
+                    copy_and_clear clipboard ${username@Q} \
+                 && copy_and_clear primary ${password@Q}")
+    [ -n "$AUTOTYPE_MODE" ] && actions+=("Type username and password::auto_type all ${1@Q}")
+  fi
+  if uri="$(jq -re 'map(.login.uris[0].uri | select(. != null)) | first' <<< "$1")" ; then
+    actions+=("Open URI::xdg-open ${uri@Q}")
+    if [ -n "$password" ] && [ -n "$username" ] ; then
+      actions+=("Copy username and password, open URI:Username copied to clipboard<br>Password copied to primary selection: \
+                    copy_and_clear clipboard ${username@Q} \
+                 && copy_and_clear primary ${password@Q} \
+                 && xdg-open ${uri@Q}")
+    elif [ -n "$password" ] ; then
+      actions+=("Copy password, open URI:Password copied to clipboard:copy_and_clear ${password@Q} && xdg-open ${uri@Q}")
+    fi
+  fi
+  if jq -e '.[0].login.totp' > /dev/null <<< "$1" ; then
+    actions+=("Copy TOTP:TOTP copied to clipboard:_copy_totp ${1@Q}")
+  fi
+  declare -a "custom_field_actions=($(jq -re '.[0].fields | map("Copy " + .name + ":" + .name + " copied to clipboard:copy_and_clear " + (.value | @sh)) | @sh' <<< "$1"))"
+  for action in "${custom_field_actions[@]}" ; do
+    actions+=("$action")
+  done
+  if notes="$(jq -re '.[0].notes' <<< "$1")" ; then
+    actions+=("Display notes::display_then_exit 0 ${notes@Q}")
+  fi
+  actions+=("Display everything::_show_everything ${1@Q}")
+  printf '%s\n' "${actions[@]}"
+}
+
+select_action() {
+  rofi -dmenu -p "Action" "$1" -format i -i -no-custom "${ROFI_OPTIONS[@]}"
 }
 
 # Copy the password
@@ -330,15 +452,18 @@ copy_password() {
     pass="$(echo "$1" | jq -r '.[0].login.password')"
 
     show_copy_notification "$(echo "$1" | jq -r '.[0]')"
-    echo -n "$pass" | clipboard-set
-
-    if [[ $CLEAR -gt 0 ]]; then
-      sleep "$CLEAR"
-      if [[ "$(clipboard-get)" == "$pass" ]]; then
-        clipboard-clear
-      fi
-    fi
+    copy_and_clear clipboard "$pass"
   fi
+}
+
+_copy_totp() {
+  id=$(echo "$1" | jq -r ".[0].id")
+
+  if ! totp=$(bw --session "$BW_HASH" get totp "$id"); then
+    display_then_exit 1 "$totp"
+  fi
+
+  copy_and_clear clipboard "$totp"
 }
 
 # Copy the TOTP
@@ -348,15 +473,54 @@ copy_totp() {
     ITEMS="$item_array"
     show_full_items
   else
-    id=$(echo "$1" | jq -r ".[0].id")
-
-    if ! totp=$(bw --session "$BW_HASH" get totp "$id"); then
-      exit_error 1 "$totp"
-    fi
-
-    echo -n "$totp" | clipboard-set
+    _copy_totp "$1"
     notify-send "TOTP Copied"
   fi
+}
+
+copy_and_clear() {
+  if [ "$1" = "primary" ]; then
+    clipboard-set-primary <<< "$2"
+    if [[ $CLEAR -gt 0 ]]; then
+      (
+        sleep "$CLEAR"
+        if [[ "$(clipboard-get-primary)" == "$2" ]]; then
+          clipboard-clear-primary
+        fi
+      ) &
+    fi
+  else
+    clipboard-set <<< "$2"
+    if [[ $CLEAR -gt 0 ]]; then
+      (
+        sleep "$CLEAR"
+        if [[ "$(clipboard-get)" == "$2" ]]; then
+          clipboard-clear
+        fi
+      ) &
+    fi
+  fi
+}
+
+_show_everything() {
+  display_then_exit 0 "$(
+    jq -re '.[0] |
+      .URIs = (.login.uris | map(.uri)) |
+      .Username = .login.username |
+      .Password = .login.password |
+      reduce .fields[] as $field (.; .[$field.name] = $field.value) |
+      del(.id, .folderId, .object, .revisionDate, .type, .favorite, .login, .fields) |
+      reduce (tostream | select(length==2)) as $i ({}; .[[$i[0][] | tostring] | join(" ")] = $i[1]) |
+      to_entries |
+      map(if (.value | length) > 0 then .key + ": " + .value else empty end) |
+      join("\n")
+    ' <<< "$1"
+  )"
+}
+
+show_copy_notification() {
+  # not sure if icon will be present everywhere, /usr/share/icons is default icon location
+  notify-send "$1" -i /usr/share/icons/hicolor/64x64/apps/bitwarden.png
 }
 
 # Lock the vault by purging the key used to store the session hash
@@ -364,33 +528,10 @@ lock_vault() {
   keyctl purge user bw_session &>/dev/null
 }
 
-# Show notification about the password being copied.
-# $1: json item
-show_copy_notification() {
-  local title
-  local body=""
-  local extra_options=()
-
-  title="<b>$(echo "$1" | jq -r '.name')</b> copied"
-
-  if [[ $SHOW_PASSWORD == "yes" ]]; then
-    pass=$(echo "$1" | jq -r '.login.password')
-    body="${pass:0:4}****"
-  fi
-
-  if [[ $CLEAR -gt 0 ]]; then
-    body="$body<br>Will be cleared in ${CLEAR} seconds."
-    # Keep notification visible while the clipboard contents are active.
-    extra_options+=("-t" "$((CLEAR * 1000))")
-  fi
-  # not sure if icon will be present everywhere, /usr/share/icons is default icon location
-  notify-send "$title" "$body" "${extra_options[@]}" -i /usr/share/icons/hicolor/64x64/apps/bitwarden.png
-}
-
 parse_cli_arguments() {
   # Use GNU getopt to parse command line arguments
   if ! ARGUMENTS=$(getopt -o c:C --long auto-lock:,clear:,no-clear,show-password,state-path:,help,version -- "$@"); then
-    exit_error 1 "Failed to parse command-line arguments"
+    display_then_exit 1 "Failed to parse command-line arguments"
   fi
   eval set -- "$ARGUMENTS"
 
@@ -440,7 +581,7 @@ Quick Actions:
   $KB_TYPEALL  Autotype the username and password [needs xdotool or ydotool]
   $KB_TYPEUSER  Autotype the username [needs xdotool or ydotool]
   $KB_TYPEPASS  Autotype the password [needs xdotool or ydotool]
-  
+
   $KB_LOCK  Lock your vault
 
 Examples:
@@ -486,7 +627,7 @@ USAGE
         break
         ;;
       * )
-        exit_error 1 "Unknown option $1"
+        display_then_exit 1 "Unknown option $1"
     esac
   done
 }

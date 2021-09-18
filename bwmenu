@@ -15,6 +15,8 @@ ITEMS=
 
 # Stores which command will be used to emulate keyboard type
 AUTOTYPE_MODE=
+# Stores the argument need by xdotool to clear the modifiers (shift, control, alt, ...) first
+CLEAR_MODIFIERS=
 
 # Stores which command will be used to deal with clipboards
 CLIPBOARD_MODE=
@@ -244,16 +246,17 @@ select_autotype_command() {
       AUTOTYPE_MODE=(sudo ydotool)
     elif [ "$XDG_SESSION_TYPE" != "wayland" ] && hash xdotool 2>/dev/null; then
       AUTOTYPE_MODE=xdotool
+      CLEAR_MODIFIERS="--clearmodifiers"
     fi
   fi
 }
 
 type_word() {
-  "${AUTOTYPE_MODE[@]}" type "$1"
+  "${AUTOTYPE_MODE[@]}" type $CLEAR_MODIFIERS "$1"
 }
 
 type_tab() {
-  "${AUTOTYPE_MODE[@]}" key Tab
+  "${AUTOTYPE_MODE[@]}" key $CLEAR_MODIFIERS Tab
 }
 
 

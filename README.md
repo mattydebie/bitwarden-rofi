@@ -52,9 +52,9 @@ Quick Actions:
   Alt+c  Search through folders
 
   Alt+t  Copy the TOTP
-  Alt+1  Autotype the username and password [needs xdotool (Xorg) / ydotool (Wayland)]
-  Alt+2  Autotype the username [needs xdotool (Xorg) / ydotool (Wayland)]
-  Alt+3  Autotype the password [needs xdotool (Xorg) / ydotool (Wayland)]
+  Alt+1  Autotype the username and password [needs xdotool (Xorg) / wtype or ydotool (Wayland)]
+  Alt+2  Autotype the username [needs xdotool (Xorg) / wtype or ydotool (Wayland)]
+  Alt+3  Autotype the password [needs xdotool (Xorg) / wtype or ydotool (Wayland)]
   
   Alt+L  Lock your vault
 
@@ -88,7 +88,7 @@ You can use bitwarden-rofi to auto type your *username*, *password* or *both* by
   - <kbd>Alt</kbd>+<kbd>2</kbd>: Type only the username
   - <kbd>Alt</kbd>+<kbd>3</kbd>: Type only the password
  
-> __Wayland Users__: For autotyping to work in Wayland, you will need [`ydotool`](https://github.com/ReimuNotMoe/ydotool) working with root permissions (it needs access to /dev/uinput) without asking for password. For example, this can be achieved by adding this line in `visudo`:
+> __Wayland Users__: For autotyping to work in Wayland, you will need either [`wtype`](https://github.com/atx/wtype), or [`ydotool`](https://github.com/ReimuNotMoe/ydotool). If using `ydotool`, it needs to be working with root permissions to access `/dev/uinput` without asking for password. For example, this can be achieved by adding this line in `visudo`:
 
 `your_username ALL=(ALL) NOPASSWD: /usr/bin/ydotool`
 
@@ -105,7 +105,7 @@ You can use bitwarden-rofi to auto type your *username*, *password* or *both* by
 Install the `bitwarden-rofi` AUR package for the latest release or the `bitwarden-rofi-git` for the current master.  
 For copying or autotyping, install:
 - *xorg*: `xclip`,`xsel` and/or `xdotool` 
-- *wayland*: `wl-clipboard` and `ydotool`
+- *wayland*: `wl-clipboard` and either `wtype` or `ydotool`
 
 ### Via source
 
@@ -119,7 +119,7 @@ Install these **required** dependencies:
 
 **Optionally** install these requirements:
 - xclip, xsel, or wl-clipboard
-- xdotool or ydotool
+- xdotool, wtype, or ydotool
 
 Then download the script file and place it somewhere on your `$PATH` and grant it
 the `+x` permission.

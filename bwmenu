@@ -211,7 +211,7 @@ on_rofi_exit() {
   esac
 }
 
-# Auto type using xdotool/ydotool
+# Auto type using xdotool/ydotool/wtype
 # $1: what to type; all, username, password
 # $2: item array
 auto_type() {
@@ -240,20 +240,28 @@ auto_type() {
 # Set $AUTOTYPE_MODE to a command that will emulate keyboard input
 select_autotype_command() {
   if [[ -z "$AUTOTYPE_MODE" ]]; then
-    if [ "$XDG_SESSION_TYPE" = "wayland" ] && hash ydotool 2>/dev/null; then
+    if [ "$XDG_SESSION_TYPE" = "wayland" ] && hash wtype 2>/dev/null; then
+      AUTOTYPE_MODE=wtype
+      AUTOTYPE_TYPE_ARG=
+      AUTOTYPE_KEY_ARG="-P"
+    elif [ "$XDG_SESSION_TYPE" = "wayland" ] && hash ydotool 2>/dev/null; then
       AUTOTYPE_MODE=(sudo ydotool)
+      AUTOTYPE_TYPE_ARG="type"
+      AUTOTYPE_KEY_ARG="key"
     elif [ "$XDG_SESSION_TYPE" != "wayland" ] && hash xdotool 2>/dev/null; then
       AUTOTYPE_MODE=xdotool
+      AUTOTYPE_TYPE_ARG="type"
+      AUTOTYPE_KEY_ARG="key"
     fi
   fi
 }
 
 type_word() {
-  "${AUTOTYPE_MODE[@]}" type "$1"
+  "${AUTOTYPE_MODE[@]}" $AUTOTYPE_TYPE_ARG "$1"
 }
 
 type_tab() {
-  "${AUTOTYPE_MODE[@]}" key Tab
+  "${AUTOTYPE_MODE[@]}" $AUTOTYPE_KEY_ARG Tab
 }
 
 
@@ -437,9 +445,9 @@ Quick Actions:
   $KB_FOLDERSELECT  Search through folders
 
   $KB_TOTPCOPY  Copy the TOTP
-  $KB_TYPEALL  Autotype the username and password [needs xdotool or ydotool]
-  $KB_TYPEUSER  Autotype the username [needs xdotool or ydotool]
-  $KB_TYPEPASS  Autotype the password [needs xdotool or ydotool]
+  $KB_TYPEALL  Autotype the username and password [needs xdotool, wtype, or ydotool]
+  $KB_TYPEUSER  Autotype the username [needs xdotool, wtype, or ydotool]
+  $KB_TYPEPASS  Autotype the password [needs xdotool, wtype, or ydotool]
   
   $KB_LOCK  Lock your vault
 

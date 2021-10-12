@@ -139,16 +139,19 @@ show_items() {
 # Similar to show_items() but using the item's ID for deduplication
 show_full_items() {
   if item=$(
+    ## Show id and name
     echo "$ITEMS" \
-    | jq -r ".[] | select( has( \"login\" )) | \"\\(.id): name: \\(.name), username: \\(.login.username)\"" \
+    | jq -r ".[] | select( has( \"login\" )) | \"name: \\(.name), username: \\(.login.username)\"" \
     | rofi_menu
   ); then
-    item_id="$(echo "$item" | cut -d ':' -f 1)"
+    username=$(echo -n $item|sed -r 's/.*username: (\w+)/\1/')
+    item_id=$(echo $ITEMS | jq -r ".[]|select(.login.username==\"$username\")|.id")
     item_array="$(array_from_id "$item_id")"
     "${ENTER_CMD[@]}" "$item_array"
   else
     rofi_exit_code=$?
-    item_id="$(echo "$item" | cut -d ':' -f 1)"
+    username=$(echo -n $item|sed -r 's/.*username: (\w+)/\1/')
+    item_id=$(echo $ITEMS | jq -r ".[]|select(.login.username==\"$username\")|.id")
     item_array="$(array_from_id "$item_id")"
     on_rofi_exit "$rofi_exit_code" "$item_array"
   fi

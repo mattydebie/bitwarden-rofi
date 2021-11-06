@@ -24,15 +24,15 @@ CLIPBOARD_MODE=
 ENTER_CMD=copy_password
 
 # Keyboard shortcuts
-KB_SYNC="Alt+r"
-KB_URLSEARCH="Alt+u"
-KB_NAMESEARCH="Alt+n"
-KB_FOLDERSELECT="Alt+c"
-KB_TOTPCOPY="Alt+t"
-KB_LOCK="Alt+L"
-KB_TYPEALL="Alt+1"
-KB_TYPEUSER="Alt+2"
-KB_TYPEPASS="Alt+3"
+: ${KB_SYNC="Alt+r"}
+: ${KB_URLSEARCH="Alt+u"}
+: ${KB_NAMESEARCH="Alt+n"}
+: ${KB_FOLDERSELECT="Alt+c"}
+: ${KB_TOTPCOPY="Alt+t"}
+: ${KB_LOCK="Alt+L"}
+: ${KB_TYPEALL="Alt+1"}
+: ${KB_TYPEUSER="Alt+2"}
+: ${KB_TYPEPASS="Alt+3"}
 
 # Item type classification
 TYPE_LOGIN=1

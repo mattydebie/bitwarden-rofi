@@ -33,6 +33,7 @@ KB_LOCK="Alt+L"
 KB_TYPEALL="Alt+1"
 KB_TYPEUSER="Alt+2"
 KB_TYPEPASS="Alt+3"
+KB_URICOPY="Alt+4"
 
 # Item type classification
 TYPE_LOGIN=1
@@ -49,7 +50,7 @@ DIR="$(dirname "$(readlink -f "$0")")"
 source "$DIR/lib-bwmenu"
 
 ask_password() {
-  mpw=$(printf '' | rofi -dmenu -p "Master Password" -password -lines 0) || exit $?
+  mpw=$(printf '' | rofi -dmenu -p "Master Password" -password -l 0) || exit $?
   echo "$mpw" | bw unlock 2>/dev/null | grep 'export' | sed -E 's/.*export BW_SESSION="(.*==)"$/\1/' || exit_error $? "Could not unlock vault"
 }
 
@@ -98,19 +99,23 @@ rofi_menu() {
     -kb-custom-4 $KB_FOLDERSELECT
     -kb-custom-8 $KB_TOTPCOPY
     -kb-custom-9 $KB_LOCK
+    -kb-custom-10 $KB_URICOPY
   )
 
   msg="<b>$KB_SYNC</b>: sync | <b>$KB_URLSEARCH</b>: urls | <b>$KB_NAMESEARCH</b>: names | <b>$KB_FOLDERSELECT</b>: folders | <b>$KB_TOTPCOPY</b>: totp | <b>$KB_LOCK</b>: lock"
 
-  [[ ! -z "$AUTOTYPE_MODE" ]] && {
+  if [[ ! -z "$AUTOTYPE_MODE" ]]; then
     actions+=(
       -kb-custom-5 $KB_TYPEALL
       -kb-custom-6 $KB_TYPEUSER
       -kb-custom-7 $KB_TYPEPASS
     )
     msg+="
-<b>$KB_TYPEALL</b>: Type all  | <b>$KB_TYPEUSER</b>: Type user | <b>$KB_TYPEPASS</b>: Type pass"
-  }
+<b>$KB_TYPEALL</b>: Type all | <b>$KB_TYPEUSER</b>: Type user | <b>$KB_TYPEPASS</b>: Type pass | <b>$KB_URICOPY</b>: Copy uri"
+  else
+    msg+="
+<b>$KB_URICOPY</b>: Copy uri"
+  fi
 
   rofi -dmenu -p 'Name' \
     -i -no-custom \
@@ -204,6 +209,7 @@ on_rofi_exit() {
     13) show_folders;;
     17) copy_totp "$2";;
     18) lock_vault;;
+    19) copy_uri "$2";;
     14) auto_type all "$2";;
     15) auto_type username "$2";;
     16) auto_type password "$2";;
@@ -359,6 +365,24 @@ copy_totp() {
   fi
 }
 
+# Copy the URL
+# $1: item array
+copy_uri() {
+  if not_unique "$1"; then
+    ITEMS="$item_array"
+    show_full_items
+  else
+    id=$(echo "$1" | jq -r ".[0].id")
+
+    if ! uri=$(bw --session "$BW_HASH" get uri "$id"); then
+      exit_error 1 "$uri"
+    fi
+
+    echo -n "$uri" | clipboard-set
+    notify-send "URI Copied"
+  fi
+}
+
 # Lock the vault by purging the key used to store the session hash
 lock_vault() {
   keyctl purge user bw_session &>/dev/null
@@ -440,6 +464,7 @@ Quick Actions:
   $KB_TYPEALL  Autotype the username and password [needs xdotool or ydotool]
   $KB_TYPEUSER  Autotype the username [needs xdotool or ydotool]
   $KB_TYPEPASS  Autotype the password [needs xdotool or ydotool]
+  $KB_URICOPY  Copy the URL
   
   $KB_LOCK  Lock your vault
 

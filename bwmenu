@@ -83,7 +83,7 @@ exit_error() {
   local code="$1"
   local message="$2"
 
-  rofi -e "$message"
+  rofi -e "$message" ${ROFI_OPTIONS[@]}
   exit "$code"
 }
 

@@ -42,6 +42,9 @@ Options:
   --show-password
       Show the first 4 characters of the copied password in the notification.
 
+  -p, --password-rofi-option
+      Option pass to rofi '-theme-str' when asking for master password (Can be called multiple times).
+
 Quick Actions:
   When hovering over an item in the rofi menu, you can make use of Quick Actions.
 
@@ -67,6 +70,9 @@ Examples:
 
   # Never lock the Vault
   bwmenu --auto-lock -1
+
+  # Only show rofi inputbar when asking for master password
+  bwmenu -p "mainbox{children: [inputbar];}" -p " inputbar{spacing: 20px;children: [prompt,entry];}" -p window{height:inherit\;}
 
   # Place rofi on top of screen, like a Quake console
   bwmenu -- -location 2

@@ -42,6 +42,7 @@ TYPE_IDENTITY=4
 
 # Populated in parse_cli_arguments
 ROFI_OPTIONS=()
+ROFI_PASSWORD_OPTIONS=()
 DEDUP_MARK="(+)"
 
 # Source helper functions
@@ -49,7 +50,7 @@ DIR="$(dirname "$(readlink -f "$0")")"
 source "$DIR/lib-bwmenu"
 
 ask_password() {
-  mpw=$(printf '' | rofi -dmenu -p "Master Password" -password -l 0 ${ROFI_OPTIONS[@]}) || exit $?
+  mpw=$(printf '' | rofi -dmenu -p "Master Password" -password -l 0 ${ROFI_OPTIONS[@]} "${ROFI_PASSWORD_OPTIONS[@]}") || exit $?
   echo "$mpw" | bw unlock 2>/dev/null | grep 'export' | sed -E 's/.*export BW_SESSION="(.*==)"$/\1/' || exit_error $? "Could not unlock vault"
 }
 
@@ -355,7 +356,7 @@ copy_totp() {
     fi
 
     echo -n "$totp" | clipboard-set
-    notify-send "TOTP Copied"
+    notify-send "TOTP Copied" -a "$NAME"
   fi
 }
 
@@ -384,12 +385,12 @@ show_copy_notification() {
     extra_options+=("-t" "$((CLEAR * 1000))")
   fi
   # not sure if icon will be present everywhere, /usr/share/icons is default icon location
-  notify-send "$title" "$body" "${extra_options[@]}" -i /usr/share/icons/hicolor/64x64/apps/bitwarden.png
+  notify-send "$title" "$body" "${extra_options[@]}" -i /usr/share/icons/hicolor/64x64/apps/bitwarden.png -a "$NAME"
 }
 
 parse_cli_arguments() {
   # Use GNU getopt to parse command line arguments
-  if ! ARGUMENTS=$(getopt -o c:C --long auto-lock:,clear:,no-clear,show-password,state-path:,help,version -- "$@"); then
+  if ! ARGUMENTS=$(getopt -o c:C:p: --long auto-lock:,clear:,no-clear,show-password,state-path:,password-rofi-option:,help,version -- "$@"); then
     exit_error 1 "Failed to parse command-line arguments"
   fi
   eval set -- "$ARGUMENTS"
@@ -427,6 +428,9 @@ Options:
   --show-password
       Show the first 4 characters of the copied password in the notification.
 
+  -p, --password-rofi-option
+      Option pass to rofi '-theme-str' when asking for master password (Can be called multiple times).
+
 Quick Actions:
   When hovering over an item in the rofi menu, you can make use of Quick Actions.
 
@@ -437,9 +441,9 @@ Quick Actions:
   $KB_FOLDERSELECT  Search through folders
 
   $KB_TOTPCOPY  Copy the TOTP
-  $KB_TYPEALL  Autotype the username and password [needs xdotool or ydotool]
-  $KB_TYPEUSER  Autotype the username [needs xdotool or ydotool]
-  $KB_TYPEPASS  Autotype the password [needs xdotool or ydotool]
+  $KB_TYPEALL  Autotype the username and password [needs xdotool (Xorg) / ydotool (Wayland)]
+  $KB_TYPEUSER  Autotype the username [needs xdotool (Xorg) / ydotool (Wayland)]
+  $KB_TYPEPASS  Autotype the password [needs xdotool (Xorg) / ydotool (Wayland)]
   
   $KB_LOCK  Lock your vault
 
@@ -452,6 +456,9 @@ Examples:
 
   # Never lock the Vault
   $NAME --auto-lock -1
+
+  # Only show rofi inputbar when asking for master password
+  $NAME -p "mainbox{children: [inputbar];}" -p " inputbar{spacing: 20px;children: [prompt,entry];}" -p window{height:inherit\;}
 
   # Place rofi on top of screen, like a Quake console
   $NAME -- -location 2
@@ -479,6 +486,10 @@ USAGE
       --show-password )
         SHOW_PASSWORD=yes
         shift
+        ;;
+      -p | --password-rofi-option )
+        ROFI_PASSWORD_OPTIONS+=(-theme-str "$2")
+        shift 2
         ;;
       -- )
         shift

@@ -166,13 +166,13 @@ show_full_items() {
     | jq -r ".[] | select( has( \"login\" )) | \"name: \\(.name), username: \\(.login.username)\"" \
     | rofi_menu
   ); then
-    username=$(echo -n $item|sed -r 's/.*username: (\w+)/\1/')
+    username=$(echo -n $item | sed -r 's/.*username: (\w+)/\1/')
     item_id=$(echo $ITEMS | jq -r ".[]|select(.login.username==\"$username\")|.id")
     item_array="$(array_from_id "$item_id")"
     "${ENTER_CMD[@]}" "$item_array"
   else
     rofi_exit_code=$?
-    username=$(echo -n $item|sed -r 's/.*username: (\w+)/\1/')
+    username=$(echo -n $item | sed -r 's/.*username: (\w+)/\1/')
     item_id=$(echo $ITEMS | jq -r ".[]|select(.login.username==\"$username\")|.id")
     item_array="$(array_from_id "$item_id")"
     on_rofi_exit "$rofi_exit_code" "$item_array"

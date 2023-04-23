@@ -42,6 +42,9 @@ Options:
   --show-password
       Show the first 4 characters of the copied password in the notification.
 
+  --hide-keybinds
+      Hide help text containing keybinds.
+
 Quick Actions:
   When hovering over an item in the rofi menu, you can make use of Quick Actions.
 

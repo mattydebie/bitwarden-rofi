@@ -8,6 +8,7 @@ BW_HASH=
 # Options
 CLEAR=$DEFAULT_CLEAR # Clear password after N seconds (0 to disable)
 SHOW_PASSWORD=no # Show part of the password in the notification
+SHOW_USERNAME=no # Show usernames in default view for unique items
 AUTO_LOCK=900 # 15 minutes, default for bitwarden apps
 
 # Holds the available items in memory
@@ -141,12 +142,62 @@ rofi_menu() {
     "${ROFI_OPTIONS[@]}"
 }
 
+## Format bw JSON to display names and deduplicate lines,
+## and depending on the options, show usernames for unique
+## items
+format_logins() {
+  if [[ "no" == $SHOW_USERNAME ]]; then
+    jq -r ".[] | select( has( \"login\" ) ) | \"\\(.name)\"" | \
+    dedup_lines
+  else
+    declare -A logins
+    declare -A count
+    json="$1"
+
+    # Insert TAB between the name and the username, expecting the fields to not contain
+    # such a character 
+    names=$(jq -r ".[] | select( has( \"login\" ) ) | \"\\(.name)\t\\(.login.username)\"")
+
+    while read -r login; do
+      # Retrieve the name and username, using TAB as a delimiter
+      name=$(echo "$login" | cut -d$'\t' -f1)
+      username=$(echo "$login" | cut -d$'\t' -f2)
+      logins["$name"]="$username"
+
+      # Count the apparitions of each name
+      if [[ -z ${logins[$name]} ]]; then
+        count["$name"]=1
+      else
+        current=${count["$name"]}
+        count["$name"]=$((current + 1))
+      fi
+    done <<< "$names"
+
+    # Sort the names of the logins used as keys so the output
+    # is displayed alphabetically
+    sorted_keys=()
+    while IFS= read -rd '' key; do
+        sorted_keys+=( "$key" )
+    done < <(printf '%s\0' "${!logins[@]}" | sort -z)
+
+    for name in "${sorted_keys[@]}"; do
+      # Display the username for unique items only
+      if [[ ${count["$name"]} -eq 1 ]]; then
+        echo "$name: ${logins["$name"]}"
+      else
+        # Include the duplicate item marking for items
+        # whose count is greater than 1
+        echo "$DEDUP_MARK $name"
+      fi
+    done
+  fi
+}
+
 # Show items in a rofi menu by name of the item
 show_items() {
   if item=$(
     echo "$ITEMS" \
-    | jq -r ".[] | select( has( \"login\" ) ) | \"\\(.name)\"" \
-    | dedup_lines \
+    | format_logins \
     | rofi_menu
   ); then
     item_array="$(array_from_name "$item")"
@@ -432,7 +483,7 @@ show_copy_notification() {
 
 parse_cli_arguments() {
   # Use GNU getopt to parse command line arguments
-  if ! ARGUMENTS=$(getopt -o c:C --long auto-lock:,clear:,no-clear,show-password,state-path:,help,version -- "$@"); then
+  if ! ARGUMENTS=$(getopt -o c:C --long auto-lock:,clear:,no-clear,show-password,show-username,state-path:,help,version -- "$@"); then
     exit_error 1 "Failed to parse command-line arguments"
   fi
   eval set -- "$ARGUMENTS"
@@ -469,6 +520,9 @@ Options:
 
   --show-password
       Show the first 4 characters of the copied password in the notification.
+
+  --show-username
+      Show usernames for unique items
 
 Quick Actions:
   When hovering over an item in the rofi menu, you can make use of Quick Actions.
@@ -522,6 +576,10 @@ USAGE
         ;;
       --show-password )
         SHOW_PASSWORD=yes
+        shift
+        ;;
+      --show-username )
+        SHOW_USERNAME=yes
         shift
         ;;
       -- )

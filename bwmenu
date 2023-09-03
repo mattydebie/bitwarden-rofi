@@ -4,6 +4,7 @@ NAME="$(basename "$0")"
 VERSION="0.5"
 DEFAULT_CLEAR=5
 BW_HASH=
+FOLDER_ID=
 
 # Options
 CLEAR=$DEFAULT_CLEAR # Clear password after N seconds (0 to disable)
@@ -12,7 +13,8 @@ AUTO_LOCK=900 # 15 minutes, default for bitwarden apps
 
 # Holds the available items in memory
 ITEMS=
-CACHE_FILE=/tmp/bwmenu/logins.gpg
+CACHE_PATH=/tmp/bwmenu
+CACHE_FILENAME=logins.gpg
 
 # Stores which command will be used to emulate keyboard type
 AUTOTYPE_MODE=
@@ -53,7 +55,7 @@ DIR="$(dirname "$(readlink -f "$0")")"
 source "$DIR/lib-bwmenu"
 
 ask_password() {
-  rm $CACHE_FILE
+  rm "$CACHE_PATH/$CACHE_FILENAME"
   mpw=$(printf '' | rofi -dmenu -p "Master Password" -password -l 0 ${ROFI_OPTIONS[@]}) || exit $?
   if ! out="$(bw --raw --nointeraction unlock "$mpw" 2>&1)"; then
     exit_error 1 "Could not unlock vault: $out"
@@ -80,8 +82,8 @@ get_session_key() {
 
 # Load encrypted passwords from cache if exists
 load_cache() {
-  if [ -f "$CACHE_FILE" ]; then
-    ITEMS=$(gpg --quiet -d --batch --passphrase $BW_HASH --cipher-algo AES256 $CACHE_FILE)
+  if [ -f "$CACHE_PATH/$CACHE_FILENAME" ]; then
+    ITEMS=$(gpg --quiet -d --batch --passphrase $BW_HASH --cipher-algo AES256 "$CACHE_PATH/$CACHE_FILENAME" )
   else
     load_items
   fi
@@ -90,14 +92,14 @@ load_cache() {
 # source the hash file to gain access to the BitWarden CLI
 # Pre fetch all the items
 load_items() {
-  if ! ITEMS=$(bw --nointeraction list items --session "$BW_HASH" 2>/dev/null); then
+  if ! ITEMS=$(bw --nointeraction list items --folderid "$FOLDER_ID" --session "$BW_HASH" 2>/dev/null); then
     keyctl purge user bw_session &>/dev/null
     exit_error $? "Could not load items: $ITEMS"
   fi
 
   # create dir for cache and encrypt $ITEMS
-  mkdir -p $(dirname $CACHE_FILE)
-  echo "$ITEMS" | gpg -c --batch --passphrase $BW_HASH --cipher-algo AES256 -o $CACHE_FILE
+  mkdir -p $(dirname "$CACHE_PATH/$CACHE_FILENAME" )
+  echo "$ITEMS" | gpg -c --batch --passphrase $BW_HASH --cipher-algo AES256 -o "$CACHE_PATH/$CACHE_FILENAME" 
 }
 
 exit_error() {
@@ -218,7 +220,7 @@ sync_bitwarden() {
     exit_error 1 "Failed to sync bitwarden: $error"
   fi
 
-  rm $CACHE_FILE
+  rm "$CACHE_PATH/$CACHE_FILENAME" 
   load_items
   show_items
 }
@@ -432,7 +434,7 @@ show_copy_notification() {
 
 parse_cli_arguments() {
   # Use GNU getopt to parse command line arguments
-  if ! ARGUMENTS=$(getopt -o c:C --long auto-lock:,clear:,no-clear,show-password,state-path:,help,version -- "$@"); then
+  if ! ARGUMENTS=$(getopt -o c:C --long auto-lock:,clear:,no-clear,show-password,folder-id:,state-path:,help,version -- "$@"); then
     exit_error 1 "Failed to parse command-line arguments"
   fi
   eval set -- "$ARGUMENTS"
@@ -469,6 +471,9 @@ Options:
 
   --show-password
       Show the first 4 characters of the copied password in the notification.
+
+  --folder-id
+      Only show passwords from this folder
 
 Quick Actions:
   When hovering over an item in the rofi menu, you can make use of Quick Actions.
@@ -519,6 +524,11 @@ USAGE
       -C | --no-clear )
         CLEAR=0
         shift
+        ;;
+      --folder-id )
+        FOLDER_ID=$2
+        CACHE_FILENAME="logins-$(echo $FOLDER_ID | md5sum | grep -o '^\S\+').gpg"
+        shift 2
         ;;
       --show-password )
         SHOW_PASSWORD=yes

@@ -286,7 +286,7 @@ type_word() {
 }
 
 type_tab() {
-  "${AUTOTYPE_MODE[@]}" key $CLEAR_MODIFIERS Tab
+  "${AUTOTYPE_MODE[@]}" key $CLEAR_MODIFIERS 15:1 15:0
 }
 
 
